@@ -1,0 +1,131 @@
+{
+  "counter": 7,
+  "tickets": [
+    {
+      "id": "001",
+      "userId": "429008086917840907",
+      "username": "r_7kh",
+      "type": "شكوى-لاعب",
+      "status": "OPEN",
+      "createdAt": "11.5.2026, 18:10:25"
+    },
+    {
+      "id": "002",
+      "userId": "751148737119780865",
+      "username": "picaso11",
+      "type": "دعم-فني",
+      "status": "OPEN",
+      "createdAt": "11.5.2026, 18:17:34"
+    },
+    {
+      "id": "003",
+      "userId": "429008086917840907",
+      "username": "r_7kh",
+      "type": "شكوى-لاعب",
+      "status": "CLOSED",
+      "createdAt": "11.5.2026, 18:30:22",
+      "claimedBy": "r_7kh",
+      "claimedAt": "11.5.2026, 18:30:29",
+      "closedBy": "r_7kh",
+      "closedAt": "11.5.2026, 18:30:45"
+    },
+    {
+      "id": "004",
+      "userId": "429008086917840907",
+      "username": "r_7kh",
+      "type": "شكوى-إداري",
+      "status": "CLOSED",
+      "claimedBy": "r_7kh",
+      "claimedAt": "11.5.2026, 18:40:03",
+      "closedBy": "r_7kh",
+      "closedAt": "11.5.2026, 18:40:40",
+      "rating": null,
+      "ratingBy": null,
+      "logMessageId": "1503436679694782597",
+      "createdAt": "11.5.2026, 18:39:51"
+    },
+    {
+      "id": "005",
+      "userId": "429008086917840907",
+      "username": "r_7kh",
+      "type": "شكوى-لاعب",
+      "status": "CLOSED",
+      "claimedBy": "r_7kh",
+      "claimedAt": "11.5.2026, 18:48:57",
+      "closedBy": "r_7kh",
+      "closedAt": "11.5.2026, 18:49:19",
+      "rating": "5",
+      "ratingBy": "r_7kh",
+      "logMessageId": "1503438855964201031",
+      "createdAt": "11.5.2026, 18:48:47",
+      "claimedById": "429008086917840907",
+      "closedById": "429008086917840907",
+      "ratingAt": "11.5.2026, 18:49:25"
+    },
+    {
+      "id": "006",
+      "userId": "429008086917840907",
+      "username": "r_7kh",
+      "type": "شكوى-إداري",
+      "status": "CLOSED",
+      "claimedBy": "r_7kh",
+      "claimedAt": "11.5.2026, 18:55:31",
+      "closedBy": "r_7kh",
+      "closedAt": "11.5.2026, 18:55:37",
+      "rating": "5",
+      "ratingBy": "r_7kh",
+      "logMessageId": "1503440441012392028",
+      "createdAt": "11.5.2026, 18:55:20",
+      "claimedById": "429008086917840907",
+      "closedById": "429008086917840907",
+      "ratingById": "429008086917840907",
+      "ratingAt": "11.5.2026, 18:55:45"
+    },
+    {
+      "id": "007",
+      "userId": "429008086917840907",
+      "username": "r_7kh",
+      "type": "شكوى-لاعب",
+      "status": "CLOSED",
+      "claimedBy": "r_7kh",
+      "claimedById": "429008086917840907",
+      "claimedAt": "11.5.2026, 19:04:50",
+      "closedBy": "r_7kh",
+      "closedById": "429008086917840907",
+      "closedAt": "11.5.2026, 19:05:16",
+      "rating": "5",
+      "ratingBy": "r_7kh",
+      "ratingById": "429008086917840907",
+      "ratingAt": "11.5.2026, 19:05:20",
+      "logMessageId": "1503442864800010311",
+      "transcript": [
+        {
+          "author": "NEXUS BOT#2976",
+          "content": "<@&1436501394705354852>\n\n🎫 **تذكرة جديدة #007**\n\n👤 صاحب التذكرة: <@429008086917840907>\n📂 النوع: شكوى-لاعب\n\nيرجى شرح مشكلتك بالتفصيل وانتظار الإدارة.",
+          "createdAt": "11.5.2026, 19:00:22"
+        },
+        {
+          "author": "NEXUS BOT#2976",
+          "content": "🟢 تم استلام التذكرة بواسطة <@429008086917840907>",
+          "createdAt": "11.5.2026, 19:04:45"
+        },
+        {
+          "author": "r_7kh",
+          "content": "مرحبًا بك، شكرًا لتواصلك معنا. تم استلام تذكرتك وسيتم خدمتك بأسرع وقت ممكن، الرجاء توضيح مشكلتك أو طلبك بشكل كامل",
+          "createdAt": "11.5.2026, 19:04:53"
+        },
+        {
+          "author": "r_7kh",
+          "content": "[مرفق/Embed]",
+          "createdAt": "11.5.2026, 19:05:06"
+        },
+        {
+          "author": "NEXUS BOT#2976",
+          "content": "[مرفق/Embed]",
+          "createdAt": "11.5.2026, 19:05:10"
+        }
+      ],
+      "createdAt": "11.5.2026, 19:00:25"
+    }
+  ]
+}
