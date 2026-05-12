@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const { DisTube } = require('distube');
-const { YtdlCorePlugin } = require('@distube/ytdl-core');
+const { YtDlpPlugin } = require('@distube/yt-dlp');
 const ffmpegPath = require('ffmpeg-static');
 
 const logger = require('./utils/logger');
@@ -28,24 +28,37 @@ client.slashCommands = new Collection();
 
 client.distube = new DisTube(client, {
     emitNewSongOnly: true,
+
     ffmpeg: {
         path: ffmpegPath
     },
+
     plugins: [
-        new YtdlCorePlugin()
+        new YtDlpPlugin({
+            update: true
+        })
     ]
 });
 
 client.distube
     .on('playSong', (queue, song) => {
-        queue.textChannel?.send(`🎶 الآن يتم تشغيل: **${song.name}**`);
+        queue.textChannel?.send(
+            `🎶 الآن يتم تشغيل: **${song.name}**`
+        );
     })
+
     .on('addSong', (queue, song) => {
-        queue.textChannel?.send(`➕ تمت إضافة: **${song.name}**`);
+        queue.textChannel?.send(
+            `➕ تمت إضافة: **${song.name}**`
+        );
     })
+
     .on('error', (channel, error) => {
         logger.error(`DisTube Error: ${error.stack || error}`);
-        channel?.send('❌ حدث خطأ في نظام الموسيقى.');
+
+        channel?.send(
+            '❌ حدث خطأ في نظام الموسيقى.'
+        );
     });
 
 initDatabase();
@@ -58,5 +71,7 @@ client.login(process.env.TOKEN)
         logger.info('Discord client login successful');
     })
     .catch((error) => {
-        logger.error(`Discord client login failed: ${error.stack || error}`);
+        logger.error(
+            `Discord client login failed: ${error.stack || error}`
+        );
     });
