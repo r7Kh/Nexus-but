@@ -1,5 +1,8 @@
 const { SlashCommandBuilder } = require('discord.js');
 
+const createEmbed = require('../utils/embed');
+const logger = require('../utils/logger');
+
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('play')
@@ -12,19 +15,34 @@ module.exports = {
         ),
 
     async execute(interaction, client) {
+        await interaction.deferReply();
+
         const member = interaction.member;
         const voiceChannel = member.voice.channel;
         const song = interaction.options.getString('song');
 
         if (!voiceChannel) {
-            return interaction.reply({
-                content: '❌ يجب أن تدخل روم صوتي أولًا',
-                flags: 64
+            return interaction.editReply({
+                embeds: [
+                    createEmbed({
+                        title: '❌ NEXUS Music System',
+                        description: 'يجب أن تدخل روم صوتي أولًا.',
+                        thumbnail: client.user.displayAvatarURL()
+                    })
+                ]
             });
         }
 
-        if (!interaction.deferred && !interaction.replied) {
-            await interaction.deferReply();
+        if (!client.distube) {
+            return interaction.editReply({
+                embeds: [
+                    createEmbed({
+                        title: '❌ NEXUS Music System',
+                        description: 'نظام الموسيقى غير مفعّل داخل البوت بعد.',
+                        thumbnail: client.user.displayAvatarURL()
+                    })
+                ]
+            });
         }
 
         try {
@@ -33,22 +51,46 @@ module.exports = {
                 member
             });
 
+            logger.info(`${interaction.user.tag} used /play | Song: ${song}`);
+
             return interaction.editReply({
-                content: `🎶 جاري تشغيل: **${song}**`
+                embeds: [
+                    createEmbed({
+                        title: '🎶 NEXUS Music System',
+                        description: 'تم إرسال طلب التشغيل بنجاح.',
+                        fields: [
+                            {
+                                name: '🎵 الأغنية',
+                                value: `\`${song}\``,
+                                inline: false
+                            },
+                            {
+                                name: '👤 بواسطة',
+                                value: `${interaction.user}`,
+                                inline: true
+                            },
+                            {
+                                name: '🔊 الروم الصوتي',
+                                value: `${voiceChannel}`,
+                                inline: true
+                            }
+                        ],
+                        thumbnail: client.user.displayAvatarURL()
+                    })
+                ]
             });
 
         } catch (error) {
-            console.error(error);
+            logger.error(`Play command error: ${error.stack || error}`);
 
-            if (interaction.deferred || interaction.replied) {
-                return interaction.editReply({
-                    content: '❌ فشل تشغيل الأغنية'
-                });
-            }
-
-            return interaction.reply({
-                content: '❌ فشل تشغيل الأغنية',
-                flags: 64
+            return interaction.editReply({
+                embeds: [
+                    createEmbed({
+                        title: '❌ NEXUS Music System',
+                        description: 'فشل تشغيل الأغنية. تأكد من الرابط أو اسم الأغنية.',
+                        thumbnail: client.user.displayAvatarURL()
+                    })
+                ]
             });
         }
     }

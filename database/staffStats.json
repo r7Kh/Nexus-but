@@ -5,6 +5,30 @@
                 "messages": 6,
                 "ticketsClaimed": 4,
                 "voiceMs": 0,
+                "voiceJoinAt": 1778605188748
+            }
+        },
+        "1346117305586815069": {
+            "2026-W20": {
+                "messages": 3,
+                "ticketsClaimed": 0,
+                "voiceMs": 0,
+                "voiceJoinAt": null
+            }
+        },
+        "1467605470536798229": {
+            "2026-W20": {
+                "messages": 1,
+                "ticketsClaimed": 0,
+                "voiceMs": 0,
+                "voiceJoinAt": null
+            }
+        },
+        "1323124314920452106": {
+            "2026-W20": {
+                "messages": 1,
+                "ticketsClaimed": 0,
+                "voiceMs": 0,
                 "voiceJoinAt": null
             }
         }
