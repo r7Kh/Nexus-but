@@ -4,6 +4,12 @@ const path = require('path');
 const filePath = path.join(__dirname, '../database/tickets.json');
 
 function readData() {
+    const dir = path.dirname(filePath);
+
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+
     if (!fs.existsSync(filePath)) {
         fs.writeFileSync(
             filePath,
@@ -27,6 +33,8 @@ function createTicket(ticket) {
 
     const newTicket = {
         id: ticketNumber,
+        channelName: ticket.channelName || null,
+        channelId: ticket.channelId || null,
         ...ticket,
         status: 'OPEN',
         claimedBy: null,
@@ -34,6 +42,7 @@ function createTicket(ticket) {
         claimedAt: null,
         closedBy: null,
         closedById: null,
+        closeReason: null,
         closedAt: null,
         rating: null,
         ratingBy: null,
@@ -50,9 +59,29 @@ function createTicket(ticket) {
     return newTicket;
 }
 
-function findTicketByChannel(channelName) {
+function getTicketIdFromChannelName(channelName) {
+    if (!channelName) return null;
+
+    const match = channelName.match(/(?:ticket|player|admin|support|role)-(\d{3,})$/);
+
+    if (!match) return null;
+
+    return match[1];
+}
+
+function findTicketByChannel(channelName, channelId = null) {
     const data = readData();
-    return data.tickets.find(ticket => channelName === `ticket-${ticket.id}`);
+
+    if (channelId) {
+        const byChannelId = data.tickets.find(ticket => ticket.channelId === channelId);
+        if (byChannelId) return byChannelId;
+    }
+
+    const ticketId = getTicketIdFromChannelName(channelName);
+
+    if (!ticketId) return null;
+
+    return data.tickets.find(ticket => ticket.id === ticketId);
 }
 
 function updateTicket(ticketId, updates) {
@@ -72,5 +101,6 @@ module.exports = {
     saveData,
     createTicket,
     findTicketByChannel,
-    updateTicket
+    updateTicket,
+    getTicketIdFromChannelName
 };

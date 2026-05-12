@@ -1,5 +1,5 @@
 {
-  "counter": 7,
+  "counter": 14,
   "tickets": [
     {
       "id": "001",
@@ -126,6 +126,275 @@
         }
       ],
       "createdAt": "11.5.2026, 19:00:25"
+    },
+    {
+      "id": "008",
+      "userId": "429008086917840907",
+      "username": "r_7kh",
+      "type": "شكوى ضد لاعب",
+      "status": "CLOSED",
+      "claimedBy": "r_7kh",
+      "claimedById": "429008086917840907",
+      "claimedAt": "12.5.2026, 16:47:49",
+      "closedBy": "r_7kh",
+      "closedById": "429008086917840907",
+      "closedAt": "12.5.2026, 16:48:26",
+      "rating": "5",
+      "ratingBy": "r_7kh",
+      "ratingById": "429008086917840907",
+      "ratingAt": "12.5.2026, 16:48:30",
+      "logMessageId": "1503770839823417546",
+      "transcript": [
+        {
+          "author": "NEXUS BOT#2976",
+          "content": "<@&1436501394705354852> <@429008086917840907>",
+          "createdAt": "12.5.2026, 16:47:41"
+        },
+        {
+          "author": "NEXUS BOT#2976",
+          "content": "[مرفق/Embed]",
+          "createdAt": "12.5.2026, 16:47:49"
+        },
+        {
+          "author": "NEXUS BOT#2976",
+          "content": "[مرفق/Embed]",
+          "createdAt": "12.5.2026, 16:48:26"
+        }
+      ],
+      "createdAt": "12.5.2026, 16:47:40",
+      "closeReason": "Test"
+    },
+    {
+      "id": "009",
+      "userId": "429008086917840907",
+      "username": "r_7kh",
+      "type": "تقديم على Role",
+      "status": "CLOSED",
+      "claimedBy": "r_7kh",
+      "claimedById": "429008086917840907",
+      "claimedAt": "12.5.2026, 16:49:36",
+      "closedBy": "r_7kh",
+      "closedById": "429008086917840907",
+      "closedAt": "12.5.2026, 16:49:55",
+      "rating": "5",
+      "ratingBy": "r_7kh",
+      "ratingById": "429008086917840907",
+      "ratingAt": "12.5.2026, 16:50:01",
+      "logMessageId": "1503771213858734094",
+      "transcript": [
+        {
+          "author": "NEXUS BOT#2976",
+          "content": "<@&1436501394705354852> <@429008086917840907>",
+          "createdAt": "12.5.2026, 16:49:27"
+        },
+        {
+          "author": "NEXUS BOT#2976",
+          "content": "[مرفق/Embed]",
+          "createdAt": "12.5.2026, 16:49:37"
+        },
+        {
+          "author": "r_7kh",
+          "content": "…",
+          "createdAt": "12.5.2026, 16:49:40"
+        },
+        {
+          "author": "r_7kh",
+          "content": "!:٨/٧-(",
+          "createdAt": "12.5.2026, 16:49:42"
+        },
+        {
+          "author": "r_7kh",
+          "content": "زستسهشت",
+          "createdAt": "12.5.2026, 16:49:44"
+        },
+        {
+          "author": "r_7kh",
+          "content": "ةشخشنتس",
+          "createdAt": "12.5.2026, 16:49:45"
+        },
+        {
+          "author": "NEXUS BOT#2976",
+          "content": "[مرفق/Embed]",
+          "createdAt": "12.5.2026, 16:49:55"
+        }
+      ],
+      "createdAt": "12.5.2026, 16:49:26",
+      "closeReason": "Test2"
+    },
+    {
+      "id": "010",
+      "userId": "429008086917840907",
+      "username": "r_7kh",
+      "type": "شكوى ضد لاعب",
+      "status": "OPEN",
+      "claimedBy": null,
+      "claimedById": null,
+      "claimedAt": null,
+      "closedBy": null,
+      "closedById": null,
+      "closedAt": null,
+      "rating": null,
+      "ratingBy": null,
+      "ratingById": null,
+      "ratingAt": null,
+      "logMessageId": null,
+      "transcript": [],
+      "createdAt": "12.5.2026, 17:30:36"
+    },
+    {
+      "id": "011",
+      "userId": "429008086917840907",
+      "username": "r_7kh",
+      "type": "تقديم على Role",
+      "status": "OPEN",
+      "claimedBy": null,
+      "claimedById": null,
+      "claimedAt": null,
+      "closedBy": null,
+      "closedById": null,
+      "closedAt": null,
+      "rating": null,
+      "ratingBy": null,
+      "ratingById": null,
+      "ratingAt": null,
+      "logMessageId": null,
+      "transcript": [],
+      "createdAt": "12.5.2026, 17:33:51"
+    },
+    {
+      "id": "012",
+      "channelName": "player-012",
+      "channelId": "1503785380523278379",
+      "userId": "1501809980351971339",
+      "username": "nighto0903",
+      "type": "شكوى ضد لاعب",
+      "ticketType": "player_report",
+      "status": "CLOSED",
+      "claimedBy": "r_7kh",
+      "claimedById": "429008086917840907",
+      "claimedAt": "12.5.2026, 17:46:19",
+      "closedBy": "nighto0903",
+      "closedById": "1501809980351971339",
+      "closeReason": "........",
+      "closedAt": "12.5.2026, 17:46:51",
+      "rating": "5",
+      "ratingBy": "nighto0903",
+      "ratingById": "1501809980351971339",
+      "ratingAt": "12.5.2026, 17:46:58",
+      "logMessageId": "1503785539692658739",
+      "transcript": [
+        {
+          "author": "NEXUS BOT#2976",
+          "content": "<@&1436501394705354852> <@1501809980351971339>",
+          "createdAt": "12.5.2026, 17:46:14"
+        },
+        {
+          "author": "NEXUS BOT#2976",
+          "content": "[مرفق/Embed]",
+          "createdAt": "12.5.2026, 17:46:20"
+        },
+        {
+          "author": "NEXUS BOT#2976",
+          "content": "[مرفق/Embed]",
+          "createdAt": "12.5.2026, 17:46:50"
+        }
+      ],
+      "createdAt": "12.5.2026, 17:46:12"
+    },
+    {
+      "id": "013",
+      "channelName": "role-013",
+      "channelId": "1503787102880403566",
+      "userId": "1501809980351971339",
+      "username": "nighto0903",
+      "type": "تقديم على Role",
+      "ticketType": "role_apply",
+      "status": "CLOSED",
+      "claimedBy": "r_7kh",
+      "claimedById": "429008086917840907",
+      "claimedAt": "12.5.2026, 17:54:43",
+      "closedBy": "r_7kh",
+      "closedById": "429008086917840907",
+      "closeReason": "Test",
+      "closedAt": "12.5.2026, 17:55:03",
+      "rating": "5",
+      "ratingBy": "nighto0903",
+      "ratingById": "1501809980351971339",
+      "ratingAt": "12.5.2026, 17:55:07",
+      "logMessageId": "1503787602430529798",
+      "transcript": [
+        {
+          "author": "NEXUS BOT#2976",
+          "content": "<@&1436501394705354852> <@1501809980351971339>",
+          "createdAt": "12.5.2026, 17:53:04"
+        },
+        {
+          "author": "NEXUS BOT#2976",
+          "content": "[مرفق/Embed]",
+          "createdAt": "12.5.2026, 17:53:18"
+        },
+        {
+          "author": "NEXUS BOT#2976",
+          "content": "<@1501809980351971339>",
+          "createdAt": "12.5.2026, 17:53:51"
+        },
+        {
+          "author": "NEXUS BOT#2976",
+          "content": "[مرفق/Embed]",
+          "createdAt": "12.5.2026, 17:54:33"
+        },
+        {
+          "author": "NEXUS BOT#2976",
+          "content": "[مرفق/Embed]",
+          "createdAt": "12.5.2026, 17:54:46"
+        },
+        {
+          "author": "NEXUS BOT#2976",
+          "content": "[مرفق/Embed]",
+          "createdAt": "12.5.2026, 17:55:02"
+        }
+      ],
+      "createdAt": "12.5.2026, 17:53:03"
+    },
+    {
+      "id": "014",
+      "channelName": "support-014",
+      "channelId": "1503788822205431818",
+      "userId": "1501809980351971339",
+      "username": "nighto0903",
+      "type": "الدعم الفني",
+      "ticketType": "support",
+      "status": "CLOSED",
+      "claimedBy": "r_7kh",
+      "claimedById": "429008086917840907",
+      "claimedAt": "12.5.2026, 18:00:00",
+      "closedBy": "r_7kh",
+      "closedById": "429008086917840907",
+      "closeReason": "لل",
+      "closedAt": "12.5.2026, 18:00:15",
+      "rating": "5",
+      "ratingBy": "nighto0903",
+      "ratingById": "1501809980351971339",
+      "ratingAt": "12.5.2026, 18:00:19",
+      "logMessageId": "1503788914668994691",
+      "transcript": [
+        {
+          "author": "NEXUS BOT#2976",
+          "content": "<@&1436501394705354852> <@1501809980351971339>",
+          "createdAt": "12.5.2026, 17:59:55"
+        },
+        {
+          "author": "NEXUS BOT#2976",
+          "content": "[مرفق/Embed]",
+          "createdAt": "12.5.2026, 18:00:01"
+        },
+        {
+          "author": "NEXUS BOT#2976",
+          "content": "[مرفق/Embed]",
+          "createdAt": "12.5.2026, 18:00:15"
+        }
+      ],
+      "createdAt": "12.5.2026, 17:59:51"
     }
   ]
 }

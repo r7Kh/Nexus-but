@@ -1,34 +1,30 @@
-const fs = require('fs');
-const path = require('path');
+const { createLogger, format, transports } = require('winston');
 
-const logPath = path.join(__dirname, '../database/logs.json');
+const logger = createLogger({
+    level: 'info',
 
-function readLogs() {
-    if (!fs.existsSync(logPath)) {
-        fs.writeFileSync(logPath, '[]');
-    }
+    format: format.combine(
+        format.timestamp({
+            format: 'YYYY-MM-DD HH:mm:ss'
+        }),
 
-    return JSON.parse(fs.readFileSync(logPath));
-}
+        format.printf(({ timestamp, level, message }) => {
+            return `[${timestamp}] [${level.toUpperCase()}]: ${message}`;
+        })
+    ),
 
-function saveLogs(logs) {
-    fs.writeFileSync(logPath, JSON.stringify(logs, null, 2));
-}
+    transports: [
+        new transports.Console(),
 
-function addLog(action, moderator, target, reason) {
-    const logs = readLogs();
+        new transports.File({
+            filename: 'logs/error.log',
+            level: 'error'
+        }),
 
-    logs.push({
-        action,
-        moderator,
-        target,
-        reason,
-        date: new Date().toLocaleString()
-    });
+        new transports.File({
+            filename: 'logs/combined.log'
+        })
+    ]
+});
 
-    saveLogs(logs);
-}
-
-module.exports = {
-    addLog
-};
+module.exports = logger;

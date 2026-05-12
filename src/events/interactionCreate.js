@@ -1,33 +1,40 @@
+const logger = require('../utils/logger');
+
 module.exports = {
     name: 'interactionCreate',
     once: false,
 
     async execute(client, interaction) {
-
         if (!interaction.isChatInputCommand()) return;
 
         const command = client.slashCommands.get(interaction.commandName);
 
         if (!command) {
-            return interaction.reply({
-                content: '❌ الأمر غير موجود',
-                ephemeral: true
-            });
+            logger.warn(`Unknown slash command used: ${interaction.commandName}`);
+            return;
         }
+
+        logger.info(
+            `${interaction.user.tag} used /${interaction.commandName} in ${interaction.guild?.name || 'DM'}`
+        );
 
         try {
             await command.execute(interaction, client);
-
         } catch (error) {
+            logger.error(`
+━━━━━━━━━━━━━━
+❌ Slash Command Error
+📌 Command: ${interaction.commandName}
+👤 User: ${interaction.user.tag}
+🏠 Server: ${interaction.guild?.name || 'DM'}
+📝 Error:
+${error.stack || error}
+━━━━━━━━━━━━━━
+`);
 
-            console.log('━━━━━━━━━━━━━━');
-            console.log('❌ خطأ داخل أمر Slash:');
-            console.log('📌 الأمر:', interaction.commandName);
-            console.error(error);
-            console.log('━━━━━━━━━━━━━━');
-
-            // مهم جدًا: لا نرد إذا تم الرد مسبقًا
-            if (interaction.replied || interaction.deferred) return;
+            if (interaction.replied || interaction.deferred) {
+                return;
+            }
 
             await interaction.reply({
                 content: '❌ حدث خطأ أثناء تنفيذ الأمر',

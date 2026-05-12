@@ -3,27 +3,27 @@ const { SlashCommandBuilder } = require('discord.js');
 const createEmbed = require('../utils/embed');
 const logger = require('../utils/logger');
 const sendModLog = require('../utils/modLogger');
-const { hasAdminPermission } = require('../utils/permissions');
+const { hasModerationPermission } = require('../utils/permissions');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('kick')
-        .setDescription('طرد عضو من السيرفر')
+        .setName('untimeout')
+        .setDescription('إزالة Timeout عن عضو')
         .addUserOption(option =>
             option.setName('user')
-                .setDescription('العضو المراد طرده')
+                .setDescription('العضو')
                 .setRequired(true)
         )
         .addStringOption(option =>
             option.setName('reason')
-                .setDescription('سبب الطرد')
+                .setDescription('سبب إزالة التايم أوت')
                 .setRequired(false)
         ),
 
     async execute(interaction, client) {
         await interaction.deferReply({ flags: 64 });
 
-        if (!hasAdminPermission(interaction.member)) {
+        if (!hasModerationPermission(interaction.member)) {
             return interaction.editReply({
                 embeds: [
                     createEmbed({
@@ -46,7 +46,7 @@ module.exports = {
             return interaction.editReply({
                 embeds: [
                     createEmbed({
-                        title: '❌ NEXUS Kick System',
+                        title: '❌ NEXUS Timeout System',
                         description: 'العضو غير موجود داخل السيرفر.',
                         thumbnail: client.user.displayAvatarURL()
                     })
@@ -54,12 +54,12 @@ module.exports = {
             });
         }
 
-        if (!member.kickable) {
+        if (!member.isCommunicationDisabled()) {
             return interaction.editReply({
                 embeds: [
                     createEmbed({
-                        title: '⚠️ NEXUS Kick System',
-                        description: 'لا أستطيع طرد هذا العضو بسبب الصلاحيات أو ترتيب الرتب.',
+                        title: '⚠️ NEXUS Timeout System',
+                        description: 'هذا العضو لا يملك Timeout حاليًا.',
                         fields: [
                             {
                                 name: '👤 العضو',
@@ -67,34 +67,50 @@ module.exports = {
                                 inline: true
                             }
                         ],
-                        thumbnail: client.user.displayAvatarURL()
+                        thumbnail: user.displayAvatarURL()
                     })
                 ]
             });
         }
 
         try {
-            await member.kick(reason);
+            await member.timeout(null, reason);
 
             await sendModLog(client, {
-                title: '👢 Member Kicked',
-                description: 'تم تنفيذ عملية طرد داخل السيرفر.',
+                title: '✅ Timeout Removed',
+                description: 'تم إزالة Timeout عن عضو داخل السيرفر.',
                 thumbnail: user.displayAvatarURL(),
                 fields: [
-                    { name: '👤 العضو', value: `${user}`, inline: true },
-                    { name: '🛡️ الإداري', value: `${interaction.user}`, inline: true },
-                    { name: '🆔 User ID', value: `\`${user.id}\``, inline: true },
-                    { name: '📌 السبب', value: reason, inline: false }
+                    {
+                        name: '👤 العضو',
+                        value: `${user}`,
+                        inline: true
+                    },
+                    {
+                        name: '🛡️ الإداري',
+                        value: `${interaction.user}`,
+                        inline: true
+                    },
+                    {
+                        name: '🆔 User ID',
+                        value: `\`${user.id}\``,
+                        inline: true
+                    },
+                    {
+                        name: '📌 السبب',
+                        value: reason,
+                        inline: false
+                    }
                 ]
             });
 
-            logger.info(`${interaction.user.tag} kicked ${user.tag} | Reason: ${reason}`);
+            logger.info(`${interaction.user.tag} removed timeout from ${user.tag} | Reason: ${reason}`);
 
             return interaction.editReply({
                 embeds: [
                     createEmbed({
-                        title: '👢 NEXUS Kick System',
-                        description: 'تم طرد العضو بنجاح.',
+                        title: '✅ NEXUS Timeout System',
+                        description: 'تم إزالة Timeout عن العضو بنجاح.',
                         fields: [
                             {
                                 name: '👤 العضو',
@@ -104,11 +120,6 @@ module.exports = {
                             {
                                 name: '🛡️ الإداري',
                                 value: `${interaction.user}`,
-                                inline: true
-                            },
-                            {
-                                name: '🆔 User ID',
-                                value: `\`${user.id}\``,
                                 inline: true
                             },
                             {
@@ -123,13 +134,13 @@ module.exports = {
             });
 
         } catch (error) {
-            logger.error(`Kick command error: ${error.stack || error}`);
+            logger.error(`Untimeout command error: ${error.stack || error}`);
 
             return interaction.editReply({
                 embeds: [
                     createEmbed({
-                        title: '❌ NEXUS Kick System',
-                        description: 'حدث خطأ أثناء تنفيذ الطرد.',
+                        title: '❌ NEXUS Timeout System',
+                        description: 'حدث خطأ أثناء إزالة Timeout.',
                         thumbnail: client.user.displayAvatarURL()
                     })
                 ]

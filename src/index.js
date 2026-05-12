@@ -2,10 +2,14 @@ require('dotenv').config();
 
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 
-const commandHandler = require('./handlers/commandHandler');
+const logger = require('./utils/logger');
+const handleErrors = require('./utils/handleErrors');
+
 const slashCommandHandler = require('./handlers/slashCommandHandler');
 const eventHandler = require('./handlers/eventHandler');
 const initDatabase = require('./utils/initDatabase');
+
+handleErrors();
 
 const client = new Client({
     intents: [
@@ -21,8 +25,13 @@ client.slashCommands = new Collection();
 
 initDatabase();
 
-commandHandler(client);
 slashCommandHandler(client);
 eventHandler(client);
 
-client.login(process.env.TOKEN);
+client.login(process.env.TOKEN)
+    .then(() => {
+        logger.info('Discord client login successful');
+    })
+    .catch((error) => {
+        logger.error(`Discord client login failed: ${error.stack || error}`);
+    });

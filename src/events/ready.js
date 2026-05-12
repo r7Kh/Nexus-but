@@ -1,8 +1,22 @@
+const logger = require('../utils/logger');
+
 module.exports = {
-    name: 'ready',
+    name: 'clientReady',
     once: true,
 
     execute(client) {
-        console.log(`✅ NEXUS BOT ONLINE AS ${client.user.tag}`);
+
+        logger.info(`NEXUS BOT ONLINE AS ${client.user.tag}`);
+
+        client.user.setPresence({
+            activities: [
+                {
+                    name: 'NEXUS COMMUNITY',
+                    type: 3
+                }
+            ],
+            status: 'online'
+        });
+
     }
 };
