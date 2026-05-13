@@ -40,18 +40,36 @@ client.distube = new DisTube(client, {
 
 client.distube
     .on('playSong', (queue, song) => {
-        queue.textChannel?.send(`🎶 الآن يتم تشغيل: **${song.name}**`);
+        queue.textChannel?.send(
+            `🎶 الآن يتم تشغيل: **${song.name}**`
+        ).catch(() => {});
     })
 
     .on('addSong', (queue, song) => {
-        queue.textChannel?.send(`➕ تمت إضافة: **${song.name}**`);
+        queue.textChannel?.send(
+            `➕ تمت إضافة: **${song.name}**`
+        ).catch(() => {});
     })
 
-    .on('error', (channel, error) => {
+    .on('finish', (queue) => {
+        queue.textChannel?.send(
+            '✅ انتهت قائمة التشغيل.'
+        ).catch(() => {});
+    })
+
+    .on('disconnect', (queue) => {
+        queue.textChannel?.send(
+            '🔌 تم فصل البوت من الروم الصوتي.'
+        ).catch(() => {});
+    })
+
+    .on('error', (error, queue) => {
+        console.log('PLAY ERROR FULL:', error);
+
         logger.error(`DisTube Error: ${error.stack || error}`);
 
-        channel?.send(
-            `❌ حدث خطأ في نظام الموسيقى.\n\n\`${error.message || error}\``
+        queue?.textChannel?.send(
+            `❌ حدث خطأ أثناء تشغيل الموسيقى.\n\n\`${error.message || error}\``
         ).catch(() => {});
     });
 
