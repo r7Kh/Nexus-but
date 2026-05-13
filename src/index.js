@@ -1,6 +1,11 @@
 require('dotenv').config();
 
-const { Client, Collection, GatewayIntentBits } = require('discord.js');
+const {
+    Client,
+    Collection,
+    GatewayIntentBits
+} = require('discord.js');
+
 const { DisTube } = require('distube');
 const { YouTubePlugin } = require('@distube/youtube');
 const ffmpegPath = require('ffmpeg-static');
@@ -32,45 +37,56 @@ client.distube = new DisTube(client, {
         path: ffmpegPath
     },
     plugins: [
-        new YouTubePlugin({
-            cookies: process.env.YT_COOKIE || undefined
-        })
+        new YouTubePlugin()
     ]
 });
 
 client.distube
     .on('playSong', (queue, song) => {
-        queue.textChannel?.send(
-            `🎶 الآن يتم تشغيل: **${song.name}**`
-        ).catch(() => {});
+        queue.textChannel?.send({
+            embeds: [
+                {
+                    color: 0xD4AF37,
+                    title: '🎶 NEXUS Music System',
+                    description: `جاري تشغيل:\n\`${song.name}\``,
+                    thumbnail: {
+                        url: client.user.displayAvatarURL()
+                    }
+                }
+            ]
+        }).catch(() => {});
     })
 
     .on('addSong', (queue, song) => {
-        queue.textChannel?.send(
-            `➕ تمت إضافة: **${song.name}**`
-        ).catch(() => {});
-    })
-
-    .on('finish', (queue) => {
-        queue.textChannel?.send(
-            '✅ انتهت قائمة التشغيل.'
-        ).catch(() => {});
-    })
-
-    .on('disconnect', (queue) => {
-        queue.textChannel?.send(
-            '🔌 تم فصل البوت من الروم الصوتي.'
-        ).catch(() => {});
+        queue.textChannel?.send({
+            embeds: [
+                {
+                    color: 0xD4AF37,
+                    title: '➕ تمت إضافة أغنية',
+                    description: `\`${song.name}\``
+                }
+            ]
+        }).catch(() => {});
     })
 
     .on('error', (error, queue) => {
         console.log('PLAY ERROR FULL:', error);
 
-        logger.error(`DisTube Error: ${error.stack || error}`);
+        logger.error(
+            `Play command error: ${error.stack || error}`
+        );
 
-        queue?.textChannel?.send(
-            `❌ حدث خطأ أثناء تشغيل الموسيقى.\n\n\`${error.message || error}\``
-        ).catch(() => {});
+        queue?.textChannel?.send({
+            embeds: [
+                {
+                    color: 0xFF0000,
+                    title: '❌ NEXUS Music System',
+                    description:
+                        'حدث خطأ أثناء تشغيل الموسيقى.\n\n' +
+                        `\`${error.message || error}\``
+                }
+            ]
+        }).catch(() => {});
     });
 
 initDatabase();
@@ -81,7 +97,10 @@ eventHandler(client);
 client.login(process.env.TOKEN)
     .then(() => {
         logger.info('Discord client login successful');
+        console.log(`NEXUS BOT ONLINE AS ${client.user.tag}`);
     })
     .catch((error) => {
-        logger.error(`Discord client login failed: ${error.stack || error}`);
+        logger.error(
+            `Discord client login failed: ${error.stack || error}`
+        );
     });

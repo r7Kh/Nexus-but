@@ -10,10 +10,10 @@
         },
         "1346117305586815069": {
             "2026-W20": {
-                "messages": 4,
+                "messages": 7,
                 "ticketsClaimed": 0,
-                "voiceMs": 9476,
-                "voiceJoinAt": null
+                "voiceMs": 64854,
+                "voiceJoinAt": 1778677916914
             }
         },
         "1467605470536798229": {
@@ -27,6 +27,22 @@
         "1323124314920452106": {
             "2026-W20": {
                 "messages": 1,
+                "ticketsClaimed": 0,
+                "voiceMs": 0,
+                "voiceJoinAt": null
+            }
+        },
+        "751148737119780865": {
+            "2026-W20": {
+                "messages": 8,
+                "ticketsClaimed": 0,
+                "voiceMs": 0,
+                "voiceJoinAt": null
+            }
+        },
+        "1477644798285316127": {
+            "2026-W20": {
+                "messages": 2,
                 "ticketsClaimed": 0,
                 "voiceMs": 0,
                 "voiceJoinAt": null
