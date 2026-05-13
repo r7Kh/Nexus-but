@@ -34,15 +34,18 @@ client.manager = new Manager({
         {
             identifier: 'NEXUS-LAVALINK',
             host: process.env.LAVALINK_HOST,
-            port: 443,
+            port: Number(process.env.LAVALINK_PORT || 443),
             password: process.env.LAVALINK_PASSWORD,
-            secure: true
+            secure: process.env.LAVALINK_SECURE === 'true'
         }
     ],
 
     send(id, payload) {
         const guild = client.guilds.cache.get(id);
-        if (guild) guild.shard.send(payload);
+
+        if (guild) {
+            guild.shard.send(payload);
+        }
     }
 });
 
@@ -53,8 +56,13 @@ client.manager
     })
 
     .on('nodeError', (node, error) => {
-        logger.error(`Lavalink error: ${node.options.identifier} | ${error.stack || error}`);
-        console.error(`❌ Lavalink Error: ${error.message || error}`);
+        logger.error(
+            `Lavalink error: ${node.options.identifier} | ${error.stack || error}`
+        );
+
+        console.error(
+            `❌ Lavalink Error: ${error.message || error}`
+        );
     })
 
     .on('trackStart', (player, track) => {
@@ -90,7 +98,9 @@ client.manager
     .on('trackError', (player, track, payload) => {
         const channel = client.channels.cache.get(player.textChannel);
 
-        logger.error(`Track error: ${track?.title || 'Unknown'} | ${payload?.error || 'Unknown error'}`);
+        logger.error(
+            `Track error: ${track?.title || 'Unknown'} | ${payload?.error || 'Unknown error'}`
+        );
 
         channel?.send({
             embeds: [
