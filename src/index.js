@@ -2,7 +2,6 @@ require('dotenv').config();
 
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const { DisTube } = require('distube');
-const { YtDlpPlugin } = require('@distube/yt-dlp');
 const ffmpegPath = require('ffmpeg-static');
 
 const logger = require('./utils/logger');
@@ -28,16 +27,10 @@ client.slashCommands = new Collection();
 
 client.distube = new DisTube(client, {
     emitNewSongOnly: true,
-
     ffmpeg: {
         path: ffmpegPath
     },
-
-    plugins: [
-        new YtDlpPlugin({
-            update: true
-        })
-    ]
+    plugins: []
 });
 
 client.distube
