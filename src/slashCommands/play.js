@@ -15,79 +15,86 @@ module.exports = {
         ),
 
     async execute(interaction, client) {
-        await interaction.deferReply();
 
         const member = interaction.member;
         const voiceChannel = member.voice.channel;
+
         const song = interaction.options.getString('song');
 
         if (!voiceChannel) {
-            return interaction.editReply({
+            return interaction.reply({
                 embeds: [
                     createEmbed({
                         title: '❌ NEXUS Music System',
                         description: 'يجب أن تدخل روم صوتي أولًا.',
                         thumbnail: client.user.displayAvatarURL()
                     })
-                ]
+                ],
+                flags: 64
             });
         }
 
-        if (!client.distube) {
-            return interaction.editReply({
+        const permissions = voiceChannel.permissionsFor(
+            interaction.guild.members.me
+        );
+
+        if (
+            !permissions.has('Connect') ||
+            !permissions.has('Speak')
+        ) {
+            return interaction.reply({
                 embeds: [
                     createEmbed({
                         title: '❌ NEXUS Music System',
-                        description: 'نظام الموسيقى غير مفعّل داخل البوت بعد.',
+                        description: 'لا أملك صلاحية الدخول أو التحدث داخل الروم الصوتي.',
                         thumbnail: client.user.displayAvatarURL()
                     })
-                ]
+                ],
+                flags: 64
             });
         }
 
-        try {
-            await client.distube.play(voiceChannel, song, {
-                textChannel: interaction.channel,
-                member
-            });
+        await interaction.deferReply();
 
-            logger.info(`${interaction.user.tag} used /play | Song: ${song}`);
+        try {
+
+            await client.distube.play(
+                voiceChannel,
+                song,
+                {
+                    member,
+                    textChannel: interaction.channel,
+                    interaction
+                }
+            );
 
             return interaction.editReply({
                 embeds: [
                     createEmbed({
                         title: '🎶 NEXUS Music System',
-                        description: 'تم إرسال طلب التشغيل بنجاح.',
-                        fields: [
-                            {
-                                name: '🎵 الأغنية',
-                                value: `\`${song}\``,
-                                inline: false
-                            },
-                            {
-                                name: '👤 بواسطة',
-                                value: `${interaction.user}`,
-                                inline: true
-                            },
-                            {
-                                name: '🔊 الروم الصوتي',
-                                value: `${voiceChannel}`,
-                                inline: true
-                            }
-                        ],
+                        description: `جاري تشغيل:\n\`${song}\``,
                         thumbnail: client.user.displayAvatarURL()
                     })
                 ]
             });
 
         } catch (error) {
-            logger.error(`Play command error: ${error.stack || error}`);
+
+            console.error('PLAY ERROR FULL:', error);
+
+            logger.error(
+                `Play command error: ${error.stack || error}`
+            );
 
             return interaction.editReply({
                 embeds: [
                     createEmbed({
                         title: '❌ NEXUS Music System',
-                        description: 'فشل تشغيل الأغنية. تأكد من الرابط أو اسم الأغنية.',
+                        description:
+                            `فشل تشغيل الأغنية.\n\n` +
+                            '```' +
+                            `${String(error.message || error).slice(0, 1000)}` +
+                            '```',
                         thumbnail: client.user.displayAvatarURL()
                     })
                 ]
