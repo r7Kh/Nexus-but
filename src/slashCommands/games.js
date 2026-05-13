@@ -61,7 +61,7 @@ module.exports = {
 
         if (activeSession) {
             return interaction.reply({
-                content: `⏳ يوجد قائمة ألعاب أو لعبة شغالة حاليًا بواسطة <@${activeSession.userId}>.\nانتظر حتى تنتهي اللعبة الحالية.`,
+                content: `⏳ يوجد قائمة ألعاب أو لعبة شغالة حاليًا بواسطة <@${activeSession.userId}>.`,
                 flags: 64
             });
         }
@@ -79,7 +79,7 @@ module.exports = {
             .setTitle('🎮 NEXUS Game Hub')
             .setDescription(
                 `مرحبًا ${interaction.user}\n\n` +
-                `اختر لعبة من الأزرار بالأسفل وابدأ التحدي.\n\n` +
+                `اختر لعبة من الأزرار بالأسفل.\n\n` +
                 `💰 Coins: \`${player.coins}\`\n` +
                 `⭐ Level: \`${player.level}\`\n` +
                 `🔥 Streak: \`${player.streak}\`\n\n` +
