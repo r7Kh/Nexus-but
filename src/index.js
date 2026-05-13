@@ -2,7 +2,6 @@ require('dotenv').config();
 
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const { DisTube } = require('distube');
-const { YouTubePlugin } = require('@distube/youtube');
 const ffmpegPath = require('ffmpeg-static');
 
 const logger = require('./utils/logger');
@@ -30,10 +29,7 @@ client.distube = new DisTube(client, {
     emitNewSongOnly: true,
     ffmpeg: {
         path: ffmpegPath
-    },
-    plugins: [
-        new YouTubePlugin()
-    ]
+    }
 });
 
 client.distube
@@ -50,10 +46,12 @@ client.distube
     })
 
     .on('error', (channel, error) => {
+        console.log('PLAY ERROR FULL:', error);
+
         logger.error(`DisTube Error: ${error.stack || error}`);
 
         channel?.send(
-            '❌ حدث خطأ في نظام الموسيقى.'
+            `❌ فشل تشغيل الأغنية.\n\n${error.message}`
         ).catch(() => {});
     });
 
