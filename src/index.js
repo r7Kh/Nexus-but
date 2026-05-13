@@ -125,7 +125,7 @@ client.manager
         player.destroy();
     });
 
-client.once('ready', () => {
+client.once('clientReady', () => {
     client.manager.init(client.user.id);
 
     logger.info(`NEXUS BOT ONLINE AS ${client.user.tag}`);
