@@ -34,9 +34,9 @@ client.manager = new Manager({
         {
             identifier: 'NEXUS-LAVALINK',
             host: process.env.LAVALINK_HOST,
-            port: Number(process.env.LAVALINK_PORT || 443),
+            port: 443,
             password: process.env.LAVALINK_PASSWORD,
-            secure: process.env.LAVALINK_SECURE === 'true'
+            secure: true
         }
     ],
 
