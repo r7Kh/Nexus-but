@@ -29,14 +29,22 @@ const client = new Client({
 client.commands = new Collection();
 client.slashCommands = new Collection();
 
+/* =========================
+   LAVALINK MANAGER
+========================= */
+
 client.manager = new Manager({
     nodes: [
         {
             identifier: 'NEXUS-LAVALINK',
+
             host: process.env.LAVALINK_HOST,
-            port: Number(process.env.LAVALINK_PORT || 443),
+            port: Number(process.env.LAVALINK_PORT),
+
             password: process.env.LAVALINK_PASSWORD,
-            secure: process.env.LAVALINK_SECURE === 'true'
+
+            secure:
+                process.env.LAVALINK_SECURE === 'true'
         }
     ],
 
@@ -49,67 +57,100 @@ client.manager = new Manager({
     }
 });
 
+/* =========================
+   LAVALINK EVENTS
+========================= */
+
 client.manager
     .on('nodeConnect', (node) => {
-        logger.info(`Lavalink connected: ${node.options.identifier}`);
-        console.log(`✅ Lavalink Connected: ${node.options.identifier}`);
+        console.log(
+            `✅ Lavalink Connected: ${node.options.identifier}`
+        );
+
+        logger.info(
+            `Lavalink connected: ${node.options.identifier}`
+        );
     })
 
     .on('nodeError', (node, error) => {
-        logger.error(
-            `Lavalink error: ${node.options.identifier} | ${error.stack || error}`
+        console.error(
+            `❌ Lavalink Error: ${error.message}`
         );
 
-        console.error(
-            `❌ Lavalink Error: ${error.message || error}`
+        logger.error(
+            `Lavalink error: ${node.options.identifier} | ${error.stack || error}`
         );
     })
 
     .on('trackStart', (player, track) => {
-        const channel = client.channels.cache.get(player.textChannel);
+        const channel =
+            client.channels.cache.get(player.textChannel);
 
-        channel?.send({
+        if (!channel) return;
+
+        channel.send({
             embeds: [
                 {
                     color: 0xD4AF37,
-                    title: '🎶 NEXUS Music System',
-                    description: `يتم الآن تشغيل:\n\`${track.title}\``,
+
+                    title:
+                        '🎶 NEXUS Music System',
+
+                    description:
+                        `جاري تشغيل:\n\`${track.title}\``,
+
                     fields: [
                         {
                             name: '👤 الطلب بواسطة',
-                            value: `${track.requester || 'غير معروف'}`,
+                            value:
+                                `${track.requester || 'Unknown'}`,
                             inline: true
                         },
+
                         {
                             name: '🔊 الروم الصوتي',
-                            value: `<#${player.voiceChannel}>`,
+                            value:
+                                `<#${player.voiceChannel}>`,
                             inline: true
                         }
                     ],
+
                     footer: {
-                        text: 'NEXUS COMMUNITY • Lavalink Music System'
+                        text:
+                            'NEXUS COMMUNITY • Advanced Music System'
                     },
-                    timestamp: new Date().toISOString()
+
+                    timestamp:
+                        new Date().toISOString()
                 }
             ]
         }).catch(() => {});
     })
 
-    .on('trackError', (player, track, payload) => {
-        const channel = client.channels.cache.get(player.textChannel);
+    .on('trackError', (player, track, error) => {
+        const channel =
+            client.channels.cache.get(player.textChannel);
 
-        logger.error(
-            `Track error: ${track?.title || 'Unknown'} | ${payload?.error || 'Unknown error'}`
+        console.error(
+            `❌ Track Error: ${error?.message || error}`
         );
 
-        channel?.send({
+        if (!channel) return;
+
+        channel.send({
             embeds: [
                 {
                     color: 0xFF0000,
-                    title: '❌ NEXUS Music System',
-                    description: `حدث خطأ أثناء تشغيل:\n\`${track?.title || 'Unknown Track'}\``,
+
+                    title:
+                        '❌ NEXUS Music System',
+
+                    description:
+                        `حدث خطأ أثناء تشغيل:\n\`${track?.title || 'Unknown Track'}\``,
+
                     footer: {
-                        text: 'NEXUS COMMUNITY • Music Error'
+                        text:
+                            'NEXUS COMMUNITY • Music Error'
                     }
                 }
             ]
@@ -117,44 +158,81 @@ client.manager
     })
 
     .on('queueEnd', (player) => {
-        const channel = client.channels.cache.get(player.textChannel);
+        const channel =
+            client.channels.cache.get(player.textChannel);
 
-        channel?.send({
-            embeds: [
-                {
-                    color: 0xD4AF37,
-                    title: '✅ NEXUS Music System',
-                    description: 'انتهت قائمة التشغيل.',
-                    footer: {
-                        text: 'NEXUS COMMUNITY • Queue Ended'
+        if (channel) {
+            channel.send({
+                embeds: [
+                    {
+                        color: 0xD4AF37,
+
+                        title:
+                            '✅ NEXUS Music System',
+
+                        description:
+                            'انتهت قائمة التشغيل.',
+
+                        footer: {
+                            text:
+                                'NEXUS COMMUNITY • Queue Ended'
+                        }
                     }
-                }
-            ]
-        }).catch(() => {});
+                ]
+            }).catch(() => {});
+        }
 
         player.destroy();
     });
 
-client.once('clientReady', () => {
-    client.manager.init(client.user.id);
+/* =========================
+   CLIENT READY
+========================= */
 
-    logger.info(`NEXUS BOT ONLINE AS ${client.user.tag}`);
-    console.log(`✅ NEXUS BOT ONLINE AS ${client.user.tag}`);
+client.once('clientReady', async () => {
+    console.log(
+        `✅ NEXUS BOT ONLINE AS ${client.user.tag}`
+    );
+
+    logger.info(
+        `NEXUS BOT ONLINE AS ${client.user.tag}`
+    );
+
+    client.manager.init(client.user.id);
 });
+
+/* =========================
+   RAW VOICE UPDATE
+========================= */
 
 client.on('raw', (data) => {
     client.manager.updateVoiceState(data);
 });
+
+/* =========================
+   LOAD SYSTEMS
+========================= */
 
 initDatabase();
 
 slashCommandHandler(client);
 eventHandler(client);
 
+/* =========================
+   LOGIN
+========================= */
+
 client.login(process.env.TOKEN)
     .then(() => {
-        logger.info('Discord client login successful');
+        logger.info(
+            'Discord client login successful'
+        );
     })
+
     .catch((error) => {
-        logger.error(`Discord client login failed: ${error.stack || error}`);
+        logger.error(
+            `Discord client login failed: ${error.stack || error}`
+        );
+
+        console.error(error);
     });
