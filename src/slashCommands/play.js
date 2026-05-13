@@ -1,36 +1,33 @@
-const { SlashCommandBuilder } = require('discord.js');
-
-const createEmbed = require('../utils/embed');
-const logger = require('../utils/logger');
+const {
+    SlashCommandBuilder,
+    EmbedBuilder
+} = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('play')
-        .setDescription('تشغيل أغنية')
+        .setDescription('تشغيل موسيقى')
         .addStringOption(option =>
             option
                 .setName('song')
-                .setDescription('اسم الأغنية أو رابط YouTube')
+                .setDescription('اسم أو رابط الأغنية')
                 .setRequired(true)
         ),
 
     async execute(interaction, client) {
 
-        const member = interaction.member;
-        const voiceChannel = member.voice.channel;
+        const query = interaction.options.getString('song');
 
-        const song = interaction.options.getString('song');
+        const voiceChannel = interaction.member.voice.channel;
 
         if (!voiceChannel) {
             return interaction.reply({
                 embeds: [
-                    createEmbed({
-                        title: '❌ NEXUS Music System',
-                        description: 'يجب أن تدخل روم صوتي أولًا.',
-                        thumbnail: client.user.displayAvatarURL()
-                    })
+                    new EmbedBuilder()
+                        .setColor('Red')
+                        .setDescription('❌ يجب عليك دخول روم صوتي أولاً')
                 ],
-                flags: 64
+                ephemeral: true
             });
         }
 
@@ -44,13 +41,13 @@ module.exports = {
         ) {
             return interaction.reply({
                 embeds: [
-                    createEmbed({
-                        title: '❌ NEXUS Music System',
-                        description: 'لا أملك صلاحية الدخول أو التحدث داخل الروم الصوتي.',
-                        thumbnail: client.user.displayAvatarURL()
-                    })
+                    new EmbedBuilder()
+                        .setColor('Red')
+                        .setDescription(
+                            '❌ لا أملك صلاحيات الدخول أو التحدث بالروم الصوتي'
+                        )
                 ],
-                flags: 64
+                ephemeral: true
             });
         }
 
@@ -58,45 +55,84 @@ module.exports = {
 
         try {
 
-            await client.distube.play(
-                voiceChannel,
-                song,
-                {
-                    member,
-                    textChannel: interaction.channel,
-                    interaction
-                }
+            const player = client.manager.create({
+                guild: interaction.guild.id,
+                voiceChannel: voiceChannel.id,
+                textChannel: interaction.channel.id,
+                selfDeafen: true,
+                volume: 80
+            });
+
+            if (player.state !== 'CONNECTED') {
+                player.connect();
+            }
+
+            const res = await client.manager.search(
+                query,
+                interaction.user
             );
 
-            return interaction.editReply({
-                embeds: [
-                    createEmbed({
-                        title: '🎶 NEXUS Music System',
-                        description: `جاري تشغيل:\n\`${song}\``,
-                        thumbnail: client.user.displayAvatarURL()
-                    })
-                ]
+            if (
+                !res ||
+                !res.tracks.length
+            ) {
+                return interaction.editReply({
+                    embeds: [
+                        new EmbedBuilder()
+                            .setColor('Red')
+                            .setDescription(
+                                '❌ لم يتم العثور على أي نتائج'
+                            )
+                    ]
+                });
+            }
+
+            const track = res.tracks[0];
+
+            track.requester = interaction.user;
+
+            player.queue.add(track);
+
+            if (!player.playing && !player.paused) {
+                player.play();
+            }
+
+            const embed = new EmbedBuilder()
+                .setColor('#D4AF37')
+                .setTitle('🎵 تمت إضافة أغنية')
+                .setDescription(`\`${track.title}\``)
+                .addFields(
+                    {
+                        name: '⏱ المدة',
+                        value: track.duration,
+                        inline: true
+                    },
+                    {
+                        name: '👤 الطلب بواسطة',
+                        value: `${interaction.user}`,
+                        inline: true
+                    }
+                )
+                .setFooter({
+                    text: 'NEXUS COMMUNITY • Lavalink Music System'
+                });
+
+            interaction.editReply({
+                embeds: [embed]
             });
 
         } catch (error) {
 
-            console.error('PLAY ERROR FULL:', error);
+            console.error('PLAY ERROR:', error);
 
-            logger.error(
-                `Play command error: ${error.stack || error}`
-            );
-
-            return interaction.editReply({
+            interaction.editReply({
                 embeds: [
-                    createEmbed({
-                        title: '❌ NEXUS Music System',
-                        description:
-                            `فشل تشغيل الأغنية.\n\n` +
-                            '```' +
-                            `${String(error.message || error).slice(0, 1000)}` +
-                            '```',
-                        thumbnail: client.user.displayAvatarURL()
-                    })
+                    new EmbedBuilder()
+                        .setColor('Red')
+                        .setTitle('❌ NEXUS Music System')
+                        .setDescription(
+                            'حدث خطأ أثناء تشغيل الموسيقى'
+                        )
                 ]
             });
         }
