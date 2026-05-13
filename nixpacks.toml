@@ -1,0 +1,1 @@
+aptPkgs = ["python3", "ffmpeg"]
