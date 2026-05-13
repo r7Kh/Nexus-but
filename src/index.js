@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const { DisTube } = require('distube');
+const { YouTubePlugin } = require('@distube/youtube');
 const ffmpegPath = require('ffmpeg-static');
 
 const logger = require('./utils/logger');
@@ -30,7 +31,9 @@ client.distube = new DisTube(client, {
     ffmpeg: {
         path: ffmpegPath
     },
-    plugins: []
+    plugins: [
+        new YouTubePlugin()
+    ]
 });
 
 client.distube
@@ -51,7 +54,7 @@ client.distube
 
         channel?.send(
             '❌ حدث خطأ في نظام الموسيقى.'
-        );
+        ).catch(() => {});
     });
 
 initDatabase();
