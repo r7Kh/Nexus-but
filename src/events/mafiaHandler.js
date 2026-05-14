@@ -15,7 +15,11 @@ const MIN_PLAYERS = 4;
 const PHASE_TIME = 60_000;
 
 function btn(id, label, emoji, style = ButtonStyle.Primary) {
-    const b = new ButtonBuilder().setCustomId(id).setLabel(label).setStyle(style);
+    const b = new ButtonBuilder()
+        .setCustomId(id)
+        .setLabel(label)
+        .setStyle(style);
+
     if (emoji) b.setEmoji(emoji);
     return b;
 }
@@ -45,7 +49,9 @@ function lobbyButtons() {
 }
 
 function lobbyEmbed(lobby, client) {
-    const playersText = lobby.players.map((p, i) => `**${i + 1}.** <@${p.id}>`).join('\n');
+    const playersText = lobby.players
+        .map(p => `• <@${p.id}>`)
+        .join('\n');
 
     return new EmbedBuilder()
         .setColor('#D4AF37')
@@ -77,9 +83,9 @@ function targetSelect(customId, placeholder, players) {
             .setPlaceholder(placeholder)
             .addOptions(
                 players.slice(0, 25).map(p => ({
-                    label: p.tag.slice(0, 90),
+                    label: p.displayName?.slice(0, 90) || p.tag.slice(0, 90),
                     value: p.id,
-                    description: `اختيار ${p.tag}`.slice(0, 90)
+                    description: 'اختر هذا اللاعب'
                 }))
             )
     ]);
@@ -100,6 +106,21 @@ function assignRoles(players) {
     });
 }
 
+async function hydratePlayers(guild, players) {
+    const hydrated = [];
+
+    for (const player of players) {
+        const member = await guild.members.fetch(player.id).catch(() => null);
+
+        hydrated.push({
+            ...player,
+            displayName: member?.displayName || player.tag
+        });
+    }
+
+    return hydrated;
+}
+
 function alivePlayers(game) {
     return game.players.filter(p => p.alive);
 }
@@ -108,11 +129,50 @@ function aliveRole(game, role) {
     return game.players.find(p => p.role === role && p.alive);
 }
 
-function roleText(role) {
-    if (role === 'Mafia') return '🔪 أنت المافيا. في الليل اختر لاعبًا لقتله.';
-    if (role === 'Doctor') return '💉 أنت الدكتور. في الليل اختر لاعبًا لحمايته.';
-    if (role === 'Detective') return '🕵️ أنت المحقق. في الليل اختر لاعبًا للتحقيق معه.';
-    return '👤 أنت مواطن. حلل، ناقش، وصوّت بذكاء.';
+function roleEmbed(player) {
+    if (player.role === 'Mafia') {
+        return gameEmbed(
+            '🔪 دورك: Mafia',
+            `أنت **المافيا**.\n\n` +
+            `مهمتك في الليل اختيار لاعب وقتله.\n` +
+            `حاول تخفي نفسك، تكذب بذكاء، وتخلي الشك يروح على غيرك.\n\n` +
+            `⚠️ لا تكشف دورك لأحد.`,
+            '#FF3333'
+        );
+    }
+
+    if (player.role === 'Doctor') {
+        return gameEmbed(
+            '💉 دورك: Doctor',
+            `أنت **الدكتور**.\n\n` +
+            `مهمتك في الليل اختيار لاعب لحمايته من القتل.\n` +
+            `اختيارك ممكن يقلب الجولة بالكامل.\n\n` +
+            `⚠️ لا تكشف دورك لأحد.`,
+            '#00FF88'
+        );
+    }
+
+    if (player.role === 'Detective') {
+        return gameEmbed(
+            '🕵️ دورك: Detective',
+            `أنت **المحقق**.\n\n` +
+            `مهمتك في الليل اختيار لاعب مشكوك فيه.\n` +
+            `النتيجة لن تكشف الدور مباشرة، لكنها تعطيك مؤشر:\n` +
+            `🔪 مشبوه جدًا\n` +
+            `👤 يبدو بريئًا\n\n` +
+            `⚠️ لا تكشف دورك بسرعة، العبها بذكاء.`,
+            '#3498DB'
+        );
+    }
+
+    return gameEmbed(
+        '👤 دورك: Citizen',
+        `أنت **مواطن**.\n\n` +
+        `ما عندك قدرة خاصة في الليل.\n` +
+        `مهمتك تراقب كلام اللاعبين، تحلل، وتصوّت بذكاء.\n\n` +
+        `⚠️ لا تثق بأحد بسهولة.`,
+        '#D4AF37'
+    );
 }
 
 async function startNight(client, channel, gameId) {
@@ -136,7 +196,7 @@ async function startNight(client, channel, gameId) {
                 `🔪 المافيا يختار ضحية.\n` +
                 `💉 الدكتور يختار لاعبًا للحماية.\n` +
                 `🕵️ المحقق يختار لاعبًا للتحقيق.\n\n` +
-                `اضغط **لوحة الليل** إذا عندك دور فعال.\n` +
+                `اضغط **لوحة الليل** إذا كان لديك دور فعال.\n` +
                 `⏱️ من لا يتفاعل خلال دقيقة يتم إقصاؤه.`
             )
         ],
@@ -230,7 +290,7 @@ async function startVoting(client, channel, gameId) {
             gameEmbed(
                 '🗳️ مرحلة التصويت',
                 `حان وقت التصويت.\n\n` +
-                `اختاروا من تشكون أنه المافيا.\n\n` +
+                `اختاروا اللاعب الذي تشكون أنه المافيا.\n\n` +
                 `⏱️ من لا يصوّت خلال دقيقة يتم إقصاؤه.`
             )
         ],
@@ -522,7 +582,8 @@ module.exports = {
             }
 
             const gameId = `${interaction.channel.id}_${Date.now()}`;
-            const players = assignRoles(lobby.players);
+            const hydratedPlayers = await hydratePlayers(interaction.guild, lobby.players);
+            const players = assignRoles(hydratedPlayers);
 
             const game = {
                 id: gameId,
@@ -580,12 +641,7 @@ module.exports = {
             }
 
             return interaction.reply({
-                embeds: [
-                    gameEmbed(
-                        '🎭 دورك في Mafia',
-                        `دورك هو: **${player.role}**\n\n${roleText(player.role)}\n\n🤫 لا تخبر أحدًا بدورك.`
-                    )
-                ],
+                embeds: [roleEmbed(player)],
                 flags: 64
             });
         }
@@ -616,16 +672,32 @@ module.exports = {
                 const targets = alive.filter(p => p.id !== player.id);
 
                 return interaction.reply({
-                    embeds: [gameEmbed('🔪 اختر الضحية', 'اختر اللاعب الذي تريد قتله هذه الليلة.', '#FF3333')],
-                    components: [targetSelect(`mafia_action_kill_${gameId}`, 'اختر الضحية', targets)],
+                    embeds: [
+                        gameEmbed(
+                            '🔪 اختر الضحية',
+                            'اختر اللاعب الذي تريد قتله هذه الليلة.',
+                            '#FF3333'
+                        )
+                    ],
+                    components: [
+                        targetSelect(`mafia_action_kill_${gameId}`, 'اختر الضحية', targets)
+                    ],
                     flags: 64
                 });
             }
 
             if (player.role === 'Doctor') {
                 return interaction.reply({
-                    embeds: [gameEmbed('💉 اختر الحماية', 'اختر لاعبًا لحمايته هذه الليلة.', '#00FF88')],
-                    components: [targetSelect(`mafia_action_protect_${gameId}`, 'اختر اللاعب', alive)],
+                    embeds: [
+                        gameEmbed(
+                            '💉 اختر الحماية',
+                            'اختر لاعبًا لحمايته هذه الليلة.',
+                            '#00FF88'
+                        )
+                    ],
+                    components: [
+                        targetSelect(`mafia_action_protect_${gameId}`, 'اختر اللاعب', alive)
+                    ],
                     flags: 64
                 });
             }
@@ -634,8 +706,16 @@ module.exports = {
                 const targets = alive.filter(p => p.id !== player.id);
 
                 return interaction.reply({
-                    embeds: [gameEmbed('🕵️ اختر التحقيق', 'اختر لاعبًا لمعرفة هل هو Mafia أم لا.', '#3498DB')],
-                    components: [targetSelect(`mafia_action_investigate_${gameId}`, 'اختر اللاعب', targets)],
+                    embeds: [
+                        gameEmbed(
+                            '🕵️ اختر التحقيق',
+                            'اختر اللاعب الذي تشك فيه. النتيجة ستظهر كمؤشر وليس كشف مباشر للدور.',
+                            '#3498DB'
+                        )
+                    ],
+                    components: [
+                        targetSelect(`mafia_action_investigate_${gameId}`, 'اختر اللاعب المشبوه', targets)
+                    ],
                     flags: 64
                 });
             }
@@ -674,6 +754,7 @@ module.exports = {
             if (action === 'investigate' && player.role !== 'Detective') return;
 
             const targetId = interaction.values[0];
+            const target = game.players.find(p => p.id === targetId);
 
             if (action === 'kill') game.actions.kill = targetId;
             if (action === 'protect') game.actions.protect = targetId;
@@ -681,16 +762,24 @@ module.exports = {
             if (action === 'investigate') {
                 game.actions.investigate = targetId;
 
-                const target = game.players.find(p => p.id === targetId);
                 const isMafia = target?.role === 'Mafia';
 
                 await interaction.reply({
-                    content: `🕵️ نتيجة التحقيق: <@${targetId}> ${isMafia ? 'هو **Mafia** 🔪' : 'ليس Mafia 👤'}`,
+                    embeds: [
+                        gameEmbed(
+                            '🕵️ نتيجة التحقيق',
+                            `اللاعب: <@${targetId}>\n\n` +
+                            `${isMafia
+                                ? '🔪 هذا اللاعب **مشبوه جدًا**.\nراقبه، لكن لا تكشف نفسك بسرعة.'
+                                : '👤 هذا اللاعب **يبدو بريئًا**.\nلكن لا تثق بأحد 100%.'}`,
+                            isMafia ? '#FF3333' : '#3498DB'
+                        )
+                    ],
                     flags: 64
                 });
             } else {
                 await interaction.reply({
-                    content: '✅ تم تسجيل اختيارك.',
+                    content: `✅ تم تسجيل اختيارك على <@${targetId}>.`,
                     flags: 64
                 });
             }
