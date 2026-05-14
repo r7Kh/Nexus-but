@@ -71,6 +71,19 @@ function clearMessageSession(messageId) {
     sessionsByMessage.delete(messageId);
 }
 
+function clearAllSessions() {
+    const count = sessionsByUser.size;
+
+    sessionsByUser.clear();
+    sessionsByMessage.clear();
+
+    return count;
+}
+
+function getSessionsCount() {
+    return sessionsByUser.size;
+}
+
 function isOwner(userId, messageId) {
     const session = getMessageSession(messageId);
     return session && session.userId === userId;
@@ -83,5 +96,7 @@ module.exports = {
     getMessageSession,
     clearUserSession,
     clearMessageSession,
+    clearAllSessions,
+    getSessionsCount,
     isOwner
 };
