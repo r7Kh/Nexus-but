@@ -1,19 +1,14 @@
 const mafiaLobbies = new Map();
+const mafiaGames = new Map();
 
 function createLobby(channelId, host) {
     const lobby = {
         channelId,
         hostId: host.id,
         hostTag: host.tag,
-        players: [
-            {
-                id: host.id,
-                tag: host.tag
-            }
-        ],
+        players: [{ id: host.id, tag: host.tag }],
         status: 'WAITING',
-        createdAt: Date.now(),
-        expiresAt: Date.now() + 5 * 60 * 1000
+        createdAt: Date.now()
     };
 
     mafiaLobbies.set(channelId, lobby);
@@ -21,16 +16,7 @@ function createLobby(channelId, host) {
 }
 
 function getLobby(channelId) {
-    const lobby = mafiaLobbies.get(channelId);
-
-    if (!lobby) return null;
-
-    if (Date.now() > lobby.expiresAt && lobby.status === 'WAITING') {
-        mafiaLobbies.delete(channelId);
-        return null;
-    }
-
-    return lobby;
+    return mafiaLobbies.get(channelId) || null;
 }
 
 function deleteLobby(channelId) {
@@ -41,16 +27,10 @@ function addPlayer(channelId, user) {
     const lobby = getLobby(channelId);
     if (!lobby) return null;
 
-    if (lobby.players.some(player => player.id === user.id)) {
-        return lobby;
+    if (!lobby.players.some(p => p.id === user.id)) {
+        lobby.players.push({ id: user.id, tag: user.tag });
     }
 
-    lobby.players.push({
-        id: user.id,
-        tag: user.tag
-    });
-
-    mafiaLobbies.set(channelId, lobby);
     return lobby;
 }
 
@@ -58,10 +38,31 @@ function removePlayer(channelId, userId) {
     const lobby = getLobby(channelId);
     if (!lobby) return null;
 
-    lobby.players = lobby.players.filter(player => player.id !== userId);
-
-    mafiaLobbies.set(channelId, lobby);
+    lobby.players = lobby.players.filter(p => p.id !== userId);
     return lobby;
+}
+
+function createGame(game) {
+    mafiaGames.set(game.id, game);
+    return game;
+}
+
+function getGame(gameId) {
+    return mafiaGames.get(gameId) || null;
+}
+
+function setGame(gameId, game) {
+    mafiaGames.set(gameId, game);
+}
+
+function deleteGame(gameId) {
+    const game = mafiaGames.get(gameId);
+    if (game?.timer) clearTimeout(game.timer);
+    mafiaGames.delete(gameId);
+}
+
+function getGameByChannel(channelId) {
+    return [...mafiaGames.values()].find(g => g.channelId === channelId) || null;
 }
 
 module.exports = {
@@ -69,5 +70,10 @@ module.exports = {
     getLobby,
     deleteLobby,
     addPlayer,
-    removePlayer
+    removePlayer,
+    createGame,
+    getGame,
+    setGame,
+    deleteGame,
+    getGameByChannel
 };
