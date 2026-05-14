@@ -15,38 +15,17 @@ const MIN_PLAYERS = 4;
 function mafiaButtons() {
     return [
         new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('mafia_join')
-                .setLabel('دخول اللعبة')
-                .setEmoji('✅')
-                .setStyle(ButtonStyle.Success),
-
-            new ButtonBuilder()
-                .setCustomId('mafia_leave')
-                .setLabel('خروج')
-                .setEmoji('🚪')
-                .setStyle(ButtonStyle.Secondary),
-
-            new ButtonBuilder()
-                .setCustomId('mafia_start')
-                .setLabel('بدء اللعبة')
-                .setEmoji('▶️')
-                .setStyle(ButtonStyle.Primary),
-
-            new ButtonBuilder()
-                .setCustomId('mafia_cancel')
-                .setLabel('إلغاء')
-                .setEmoji('❌')
-                .setStyle(ButtonStyle.Danger)
+            new ButtonBuilder().setCustomId('mafia_join').setLabel('دخول اللعبة').setEmoji('✅').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('mafia_leave').setLabel('خروج').setEmoji('🚪').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('mafia_start').setLabel('بدء اللعبة').setEmoji('▶️').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('mafia_cancel').setLabel('إلغاء').setEmoji('❌').setStyle(ButtonStyle.Danger)
         )
     ];
 }
 
 function lobbyEmbed(lobby, client) {
     const playersText = lobby.players.length
-        ? lobby.players
-            .map((player, index) => `**${index + 1}.** <@${player.id}>`)
-            .join('\n')
+        ? lobby.players.map((player, index) => `**${index + 1}.** <@${player.id}>`).join('\n')
         : 'لا يوجد لاعبين بعد.';
 
     return new EmbedBuilder()
@@ -123,11 +102,15 @@ module.exports = {
             const activeSession = gameSessions.getUserSession(interaction.user.id);
             const activeLobby = mafiaSessions.getLobby(interaction.channel.id);
 
-            if (activeSession && activeSession.userId === interaction.user.id) {
+            if (activeSession && activeSession.type !== 'hub') {
                 return interaction.reply({
-                    content: '⏳ عندك قائمة ألعاب مفتوحة بالفعل. أغلقها أولًا قبل فتح Mafia.',
+                    content: '⏳ عندك لعبة شغالة بالفعل. أغلقها أولًا قبل فتح Mafia.',
                     flags: 64
                 });
+            }
+
+            if (activeSession && activeSession.type === 'hub') {
+                gameSessions.clearUserSession(interaction.user.id);
             }
 
             if (activeLobby) {
@@ -243,9 +226,7 @@ module.exports = {
             const roles = assignRoles(lobby.players);
 
             for (const player of roles) {
-                const member = await interaction.guild.members
-                    .fetch(player.id)
-                    .catch(() => null);
+                const member = await interaction.guild.members.fetch(player.id).catch(() => null);
 
                 if (member) {
                     await member.send({
@@ -258,9 +239,7 @@ module.exports = {
                                     `${player.description}\n\n` +
                                     `🤫 لا تخبر أحدًا بدورك.`
                                 )
-                                .setFooter({
-                                    text: 'NEXUS COMMUNITY • Secret Role'
-                                })
+                                .setFooter({ text: 'NEXUS COMMUNITY • Secret Role' })
                                 .setTimestamp()
                         ]
                     }).catch(() => {});
@@ -296,9 +275,7 @@ module.exports = {
                             `اتفقوا داخل الروم حسب قوانينكم وابدأوا الجولة.`
                         )
                         .setImage('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee')
-                        .setFooter({
-                            text: 'NEXUS COMMUNITY • Mafia Started'
-                        })
+                        .setFooter({ text: 'NEXUS COMMUNITY • Mafia Started' })
                         .setTimestamp()
                 ],
                 components: []
