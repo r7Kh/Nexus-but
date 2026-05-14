@@ -44,7 +44,9 @@ function mafiaButtons() {
 
 function lobbyEmbed(lobby, client) {
     const playersText = lobby.players.length
-        ? lobby.players.map((player, index) => `**${index + 1}.** <@${player.id}>`).join('\n')
+        ? lobby.players
+            .map((player, index) => `**${index + 1}.** <@${player.id}>`)
+            .join('\n')
         : 'لا يوجد لاعبين بعد.';
 
     return new EmbedBuilder()
@@ -118,36 +120,43 @@ module.exports = {
         }
 
         if (interaction.customId === 'mafia_create') {
-            const activeGame = gameSessions.getSession(interaction.channel.id);
+            const activeSession = gameSessions.getUserSession(interaction.user.id);
             const activeLobby = mafiaSessions.getLobby(interaction.channel.id);
 
-            if (activeGame && activeGame.userId !== interaction.user.id) {
+            if (activeSession && activeSession.userId === interaction.user.id) {
                 return interaction.reply({
-                    content: `⏳ يوجد لعبة أو قائمة مفتوحة حاليًا بواسطة <@${activeGame.userId}>.`,
+                    content: '⏳ عندك قائمة ألعاب مفتوحة بالفعل. أغلقها أولًا قبل فتح Mafia.',
                     flags: 64
                 });
             }
 
             if (activeLobby) {
                 return interaction.reply({
-                    content: '❌ يوجد لوبي Mafia مفتوح بالفعل.',
+                    content: '❌ يوجد لوبي Mafia مفتوح بالفعل في هذا الروم.',
                     flags: 64
                 });
             }
 
-            gameSessions.setSession(interaction.channel.id, {
+            const lobby = mafiaSessions.createLobby(
+                interaction.channel.id,
+                interaction.user
+            );
+
+            gameSessions.createSession({
                 userId: interaction.user.id,
-                type: 'mafia',
-                duration: 5 * 60 * 1000
+                channelId: interaction.channel.id,
+                type: 'mafia'
             });
 
-            const lobby = mafiaSessions.createLobby(interaction.channel.id, interaction.user);
-
-            return interaction.reply({
+            const reply = await interaction.reply({
                 content: '@here 🕵️ تم فتح لوبي Mafia جديد!',
                 embeds: [lobbyEmbed(lobby, client)],
-                components: mafiaButtons()
+                components: mafiaButtons(),
+                fetchReply: true
             });
+
+            gameSessions.attachMessage(interaction.user.id, reply.id);
+            return;
         }
 
         const lobby = mafiaSessions.getLobby(interaction.channel.id);
@@ -160,7 +169,10 @@ module.exports = {
         }
 
         if (interaction.customId === 'mafia_join') {
-            const updatedLobby = mafiaSessions.addPlayer(interaction.channel.id, interaction.user);
+            const updatedLobby = mafiaSessions.addPlayer(
+                interaction.channel.id,
+                interaction.user
+            );
 
             return interaction.update({
                 embeds: [lobbyEmbed(updatedLobby, client)],
@@ -176,7 +188,10 @@ module.exports = {
                 });
             }
 
-            const updatedLobby = mafiaSessions.removePlayer(interaction.channel.id, interaction.user.id);
+            const updatedLobby = mafiaSessions.removePlayer(
+                interaction.channel.id,
+                interaction.user.id
+            );
 
             return interaction.update({
                 embeds: [lobbyEmbed(updatedLobby, client)],
@@ -193,7 +208,7 @@ module.exports = {
             }
 
             mafiaSessions.deleteLobby(interaction.channel.id);
-            gameSessions.clearSession(interaction.channel.id);
+            gameSessions.clearUserSession(interaction.user.id);
 
             return interaction.update({
                 embeds: [
@@ -228,7 +243,9 @@ module.exports = {
             const roles = assignRoles(lobby.players);
 
             for (const player of roles) {
-                const member = await interaction.guild.members.fetch(player.id).catch(() => null);
+                const member = await interaction.guild.members
+                    .fetch(player.id)
+                    .catch(() => null);
 
                 if (member) {
                     await member.send({
@@ -241,7 +258,9 @@ module.exports = {
                                     `${player.description}\n\n` +
                                     `🤫 لا تخبر أحدًا بدورك.`
                                 )
-                                .setFooter({ text: 'NEXUS COMMUNITY • Secret Role' })
+                                .setFooter({
+                                    text: 'NEXUS COMMUNITY • Secret Role'
+                                })
                                 .setTimestamp()
                         ]
                     }).catch(() => {});
@@ -249,12 +268,17 @@ module.exports = {
             }
 
             mafiaSessions.deleteLobby(interaction.channel.id);
-            gameSessions.clearSession(interaction.channel.id);
+            gameSessions.clearUserSession(interaction.user.id);
 
             for (const player of lobby.players) {
                 gameDB.addReward(
                     { id: player.id, tag: player.tag },
-                    { coins: 20, xp: 15, win: false, loss: false }
+                    {
+                        coins: 20,
+                        xp: 15,
+                        win: false,
+                        loss: false
+                    }
                 );
             }
 
@@ -272,7 +296,9 @@ module.exports = {
                             `اتفقوا داخل الروم حسب قوانينكم وابدأوا الجولة.`
                         )
                         .setImage('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee')
-                        .setFooter({ text: 'NEXUS COMMUNITY • Mafia Started' })
+                        .setFooter({
+                            text: 'NEXUS COMMUNITY • Mafia Started'
+                        })
                         .setTimestamp()
                 ],
                 components: []
