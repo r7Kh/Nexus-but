@@ -18,6 +18,7 @@ function btn(id, label, emoji, style = ButtonStyle.Primary) {
         .setStyle(style);
 
     if (emoji) button.setEmoji(emoji);
+
     return button;
 }
 
@@ -75,10 +76,23 @@ module.exports = {
         const oldSession = gameSessions.getUserSession(interaction.user.id);
 
         if (oldSession) {
-            return interaction.reply({
-                content: '⏳ عندك قائمة ألعاب مفتوحة بالفعل. أغلقها أولًا قبل فتح قائمة جديدة.',
-                flags: 64
-            });
+            try {
+                const oldMessage = await interaction.channel.messages.fetch(
+                    oldSession.messageId
+                );
+
+                if (!oldMessage) {
+                    gameSessions.clearUserSession(interaction.user.id);
+                } else {
+                    return interaction.reply({
+                        content: '⏳ عندك قائمة ألعاب مفتوحة بالفعل. أغلقها أولًا قبل فتح قائمة جديدة.',
+                        flags: 64
+                    });
+                }
+
+            } catch {
+                gameSessions.clearUserSession(interaction.user.id);
+            }
         }
 
         const player = gameDB.getPlayer(interaction.user);
@@ -96,21 +110,24 @@ module.exports = {
             )
             .setImage('https://images.unsplash.com/photo-1511512578047-dfb367046420')
             .setThumbnail(client.user.displayAvatarURL())
-            .setFooter({ text: 'NEXUS COMMUNITY • Advanced Game System' })
+            .setFooter({
+                text: 'NEXUS COMMUNITY • Advanced Game System'
+            })
             .setTimestamp();
-
-        gameSessions.createSession({
-            userId: interaction.user.id,
-            channelId: interaction.channel.id,
-            type: 'hub'
-        });
 
         const reply = await interaction.reply({
             embeds: [embed],
             components: gameButtons(),
-            fetchReply: true
+            withResponse: true
         });
 
-        gameSessions.attachMessage(interaction.user.id, reply.id);
+        const message = await interaction.fetchReply();
+
+        gameSessions.createSession({
+            userId: interaction.user.id,
+            channelId: interaction.channel.id,
+            messageId: message.id,
+            type: 'hub'
+        });
     }
 };
