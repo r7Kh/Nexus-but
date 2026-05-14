@@ -1,37 +1,87 @@
-const activeSessions = new Map();
+const sessionsByUser = new Map();
+const sessionsByMessage = new Map();
 
-function getSession(channelId) {
-    const session = activeSessions.get(channelId);
+function createSession({ userId, channelId, messageId = null, type = 'hub' }) {
+    const oldSession = sessionsByUser.get(userId);
 
-    if (!session) return null;
+    if (oldSession?.messageId) {
+        sessionsByMessage.delete(oldSession.messageId);
+    }
 
-    if (Date.now() > session.expiresAt) {
-        activeSessions.delete(channelId);
-        return null;
+    const session = {
+        userId,
+        channelId,
+        messageId,
+        type,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+    };
+
+    sessionsByUser.set(userId, session);
+
+    if (messageId) {
+        sessionsByMessage.set(messageId, session);
     }
 
     return session;
 }
 
-function setSession(channelId, data) {
-    activeSessions.set(channelId, {
-        ...data,
-        startedAt: Date.now(),
-        expiresAt: Date.now() + (data.duration || 120000)
-    });
+function attachMessage(userId, messageId) {
+    const session = sessionsByUser.get(userId);
+    if (!session) return null;
+
+    if (session.messageId) {
+        sessionsByMessage.delete(session.messageId);
+    }
+
+    session.messageId = messageId;
+    session.updatedAt = Date.now();
+
+    sessionsByUser.set(userId, session);
+    sessionsByMessage.set(messageId, session);
+
+    return session;
 }
 
-function clearSession(channelId) {
-    activeSessions.delete(channelId);
+function getUserSession(userId) {
+    return sessionsByUser.get(userId) || null;
 }
 
-function hasActiveSession(channelId) {
-    return Boolean(getSession(channelId));
+function getMessageSession(messageId) {
+    return sessionsByMessage.get(messageId) || null;
+}
+
+function clearUserSession(userId) {
+    const session = sessionsByUser.get(userId);
+
+    if (session?.messageId) {
+        sessionsByMessage.delete(session.messageId);
+    }
+
+    sessionsByUser.delete(userId);
+}
+
+function clearMessageSession(messageId) {
+    const session = sessionsByMessage.get(messageId);
+
+    if (session) {
+        sessionsByUser.delete(session.userId);
+    }
+
+    sessionsByMessage.delete(messageId);
+}
+
+function isOwner(userId, messageId) {
+    const session = getMessageSession(messageId);
+    return session && session.userId === userId;
 }
 
 module.exports = {
-    getSession,
-    setSession,
-    clearSession,
-    hasActiveSession
+    createSession,
+    attachMessage,
+    getUserSession,
+    getMessageSession,
+    clearUserSession,
+    clearMessageSession,
+    isOwner
 };
