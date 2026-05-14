@@ -24,6 +24,15 @@ function row(components) {
     return new ActionRowBuilder().addComponents(components);
 }
 
+function gameEmbed(title, description, color = '#D4AF37') {
+    return new EmbedBuilder()
+        .setColor(color)
+        .setTitle(title)
+        .setDescription(description)
+        .setFooter({ text: 'NEXUS COMMUNITY • Mafia System' })
+        .setTimestamp();
+}
+
 function lobbyButtons() {
     return [
         row([
@@ -52,13 +61,28 @@ function lobbyEmbed(lobby, client) {
         .setTimestamp();
 }
 
-function gameEmbed(title, description, color = '#D4AF37') {
-    return new EmbedBuilder()
-        .setColor(color)
-        .setTitle(title)
-        .setDescription(description)
-        .setFooter({ text: 'NEXUS COMMUNITY • Mafia System' })
-        .setTimestamp();
+function gameControlButtons(gameId) {
+    return [
+        row([
+            btn(`mafia_reveal_${gameId}`, 'كشف دوري', '🎭', ButtonStyle.Secondary),
+            btn(`mafia_night_panel_${gameId}`, 'لوحة الليل', '🌙', ButtonStyle.Primary)
+        ])
+    ];
+}
+
+function targetSelect(customId, placeholder, players) {
+    return row([
+        new StringSelectMenuBuilder()
+            .setCustomId(customId)
+            .setPlaceholder(placeholder)
+            .addOptions(
+                players.slice(0, 25).map(p => ({
+                    label: p.tag.slice(0, 90),
+                    value: p.id,
+                    description: `اختيار ${p.tag}`.slice(0, 90)
+                }))
+            )
+    ]);
 }
 
 function shuffle(array) {
@@ -84,68 +108,11 @@ function aliveRole(game, role) {
     return game.players.find(p => p.role === role && p.alive);
 }
 
-function targetSelect(customId, placeholder, players) {
-    return row([
-        new StringSelectMenuBuilder()
-            .setCustomId(customId)
-            .setPlaceholder(placeholder)
-            .addOptions(
-                players.map(p => ({
-                    label: p.tag.slice(0, 90),
-                    value: p.id,
-                    description: `اختيار ${p.tag}`.slice(0, 90)
-                }))
-            )
-    ]);
-}
-
-async function sendRoleDM(client, game, player) {
-    const member = await client.users.fetch(player.id).catch(() => null);
-    if (!member) return;
-
-    const roleInfo = {
-        Mafia: {
-            emoji: '🔪',
-            title: 'دورك في Mafia',
-            desc: 'أنت المافيا. في الليل اختر لاعبًا لقتله.',
-            color: '#FF3333'
-        },
-        Doctor: {
-            emoji: '💉',
-            title: 'دورك في Mafia',
-            desc: 'أنت الدكتور. في الليل اختر لاعبًا لحمايته.',
-            color: '#00FF88'
-        },
-        Detective: {
-            emoji: '🕵️',
-            title: 'دورك في Mafia',
-            desc: 'أنت المحقق. في الليل اختر لاعبًا للتحقق من هويته.',
-            color: '#3498DB'
-        },
-        Citizen: {
-            emoji: '👤',
-            title: 'دورك في Mafia',
-            desc: 'أنت مواطن. راقب، حلل، وصوّت بذكاء.',
-            color: '#D4AF37'
-        }
-    };
-
-    const info = roleInfo[player.role];
-
-    await member.send({
-        embeds: [
-            new EmbedBuilder()
-                .setColor(info.color)
-                .setTitle(`${info.emoji} ${info.title}`)
-                .setDescription(
-                    `🎭 الدور: **${player.role}**\n\n` +
-                    `${info.desc}\n\n` +
-                    `🤫 لا تخبر أحدًا بدورك.`
-                )
-                .setFooter({ text: 'NEXUS COMMUNITY • Secret Role' })
-                .setTimestamp()
-        ]
-    }).catch(() => {});
+function roleText(role) {
+    if (role === 'Mafia') return '🔪 أنت المافيا. في الليل اختر لاعبًا لقتله.';
+    if (role === 'Doctor') return '💉 أنت الدكتور. في الليل اختر لاعبًا لحمايته.';
+    if (role === 'Detective') return '🕵️ أنت المحقق. في الليل اختر لاعبًا للتحقيق معه.';
+    return '👤 أنت مواطن. حلل، ناقش، وصوّت بذكاء.';
 }
 
 async function startNight(client, channel, gameId) {
@@ -155,11 +122,7 @@ async function startNight(client, channel, gameId) {
     if (game.timer) clearTimeout(game.timer);
 
     game.phase = 'NIGHT';
-    game.actions = {
-        kill: null,
-        protect: null,
-        investigate: null
-    };
+    game.actions = { kill: null, protect: null, investigate: null };
     game.responded = new Set();
     game.resolved = false;
 
@@ -168,89 +131,26 @@ async function startNight(client, channel, gameId) {
     await channel.send({
         embeds: [
             gameEmbed(
-                '🌙 Mafia Night Phase',
+                '🌙 مرحلة الليل',
                 `حلّ الليل على المدينة...\n\n` +
-                `🔪 المافيا يختار ضحية بالخاص.\n` +
-                `💉 الدكتور يختار لاعبًا لحمايته.\n` +
+                `🔪 المافيا يختار ضحية.\n` +
+                `💉 الدكتور يختار لاعبًا للحماية.\n` +
                 `🕵️ المحقق يختار لاعبًا للتحقيق.\n\n` +
+                `اضغط **لوحة الليل** إذا عندك دور فعال.\n` +
                 `⏱️ من لا يتفاعل خلال دقيقة يتم إقصاؤه.`
             )
-        ]
+        ],
+        components: gameControlButtons(gameId)
     });
 
-    const alive = alivePlayers(game);
-
-    const mafia = aliveRole(game, 'Mafia');
-    const doctor = aliveRole(game, 'Doctor');
-    const detective = aliveRole(game, 'Detective');
-
-    if (mafia) {
-        const targets = alive.filter(p => p.id !== mafia.id);
-        const user = await client.users.fetch(mafia.id).catch(() => null);
-
-        if (user && targets.length) {
-            await user.send({
-                embeds: [
-                    gameEmbed(
-                        '🔪 اختر الضحية',
-                        'اختر اللاعب الذي تريد قتله هذه الليلة.',
-                        '#FF3333'
-                    )
-                ],
-                components: [
-                    targetSelect(`mafia_action_kill_${gameId}`, 'اختر الضحية', targets)
-                ]
-            }).catch(() => {});
-        }
-    }
-
-    if (doctor) {
-        const user = await client.users.fetch(doctor.id).catch(() => null);
-
-        if (user) {
-            await user.send({
-                embeds: [
-                    gameEmbed(
-                        '💉 اختر من تريد حمايته',
-                        'اختر لاعبًا لحمايته هذه الليلة.',
-                        '#00FF88'
-                    )
-                ],
-                components: [
-                    targetSelect(`mafia_action_protect_${gameId}`, 'اختر اللاعب', alive)
-                ]
-            }).catch(() => {});
-        }
-    }
-
-    if (detective) {
-        const targets = alive.filter(p => p.id !== detective.id);
-        const user = await client.users.fetch(detective.id).catch(() => null);
-
-        if (user && targets.length) {
-            await user.send({
-                embeds: [
-                    gameEmbed(
-                        '🕵️ اختر من تريد التحقيق معه',
-                        'اختر لاعبًا لمعرفة هل هو Mafia أم لا.',
-                        '#3498DB'
-                    )
-                ],
-                components: [
-                    targetSelect(`mafia_action_investigate_${gameId}`, 'اختر اللاعب', targets)
-                ]
-            }).catch(() => {});
-        }
-    }
-
     game.timer = setTimeout(() => {
-        resolveNight(client, channel, gameId, true).catch(() => {});
+        resolveNight(client, channel, gameId).catch(() => {});
     }, PHASE_TIME);
 
     mafiaSessions.setGame(gameId, game);
 }
 
-async function resolveNight(client, channel, gameId, timeout = false) {
+async function resolveNight(client, channel, gameId) {
     const game = mafiaSessions.getGame(gameId);
     if (!game || game.resolved || game.phase !== 'NIGHT') return;
 
@@ -261,38 +161,37 @@ async function resolveNight(client, channel, gameId, timeout = false) {
 
     for (const role of ['Mafia', 'Doctor', 'Detective']) {
         const player = aliveRole(game, role);
+
         if (player && !game.responded.has(player.id)) {
             player.alive = false;
             afkEliminated.push(player);
         }
     }
 
-    let killedPlayer = null;
-    let protectedPlayer = null;
-    let nightText = '';
+    let text = '';
 
-    if (game.actions.kill) {
-        killedPlayer = game.players.find(p => p.id === game.actions.kill);
-    }
+    const killedPlayer = game.actions.kill
+        ? game.players.find(p => p.id === game.actions.kill)
+        : null;
 
-    if (game.actions.protect) {
-        protectedPlayer = game.players.find(p => p.id === game.actions.protect);
-    }
+    const protectedPlayer = game.actions.protect
+        ? game.players.find(p => p.id === game.actions.protect)
+        : null;
 
     if (killedPlayer && killedPlayer.alive) {
         if (protectedPlayer && protectedPlayer.id === killedPlayer.id) {
-            nightText += `💉 الدكتور أنقذ <@${killedPlayer.id}> من الموت!\n`;
+            text += `💉 الدكتور أنقذ <@${killedPlayer.id}> من الموت!\n`;
         } else {
             killedPlayer.alive = false;
-            nightText += `🔪 تم قتل <@${killedPlayer.id}> أثناء الليل.\n`;
+            text += `🔪 تم قتل <@${killedPlayer.id}> أثناء الليل.\n`;
         }
     } else {
-        nightText += `🌙 مرّ الليل بدون قتل.\n`;
+        text += `🌙 مرّ الليل بدون قتل.\n`;
     }
 
     if (afkEliminated.length) {
-        nightText += `\n⏰ تم إقصاء اللاعبين غير المتفاعلين:\n`;
-        nightText += afkEliminated.map(p => `• <@${p.id}>`).join('\n');
+        text += `\n⏰ تم إقصاء غير المتفاعلين:\n`;
+        text += afkEliminated.map(p => `• <@${p.id}>`).join('\n');
     }
 
     mafiaSessions.setGame(gameId, game);
@@ -300,8 +199,8 @@ async function resolveNight(client, channel, gameId, timeout = false) {
     await channel.send({
         embeds: [
             gameEmbed(
-                '☀️ Mafia Day Result',
-                `${nightText}\n\nالمدينة تستيقظ... والشك بدأ ينتشر.`
+                '☀️ نتيجة الليل',
+                `${text}\n\nالمدينة تستيقظ... والشك بدأ ينتشر.`
             )
         ]
     });
@@ -329,7 +228,7 @@ async function startVoting(client, channel, gameId) {
     await channel.send({
         embeds: [
             gameEmbed(
-                '🗳️ Mafia Voting Phase',
+                '🗳️ مرحلة التصويت',
                 `حان وقت التصويت.\n\n` +
                 `اختاروا من تشكون أنه المافيا.\n\n` +
                 `⏱️ من لا يصوّت خلال دقيقة يتم إقصاؤه.`
@@ -341,7 +240,7 @@ async function startVoting(client, channel, gameId) {
     });
 
     game.timer = setTimeout(() => {
-        resolveVote(client, channel, gameId, true).catch(() => {});
+        resolveVote(client, channel, gameId).catch(() => {});
     }, PHASE_TIME);
 
     mafiaSessions.setGame(gameId, game);
@@ -455,9 +354,7 @@ async function endGame(channel, gameId, title, description) {
         embeds: [
             gameEmbed(
                 title,
-                `${description}\n\n` +
-                `🎁 تم توزيع المكافآت حسب الفريق الفائز.`,
-                '#D4AF37'
+                `${description}\n\n🎁 تم توزيع المكافآت حسب الفريق الفائز.`
             )
         ]
     });
@@ -599,24 +496,26 @@ module.exports = {
         }
 
         if (customId === 'mafia_start') {
+            await interaction.deferUpdate();
+
             const lobby = mafiaSessions.getLobby(interaction.channel.id);
 
             if (!lobby) {
-                return interaction.reply({
+                return interaction.followUp({
                     content: '❌ لا يوجد لوبي Mafia مفتوح.',
                     flags: 64
                 });
             }
 
             if (interaction.user.id !== lobby.hostId) {
-                return interaction.reply({
+                return interaction.followUp({
                     content: '❌ فقط الهوست يستطيع بدء اللعبة.',
                     flags: 64
                 });
             }
 
             if (lobby.players.length < MIN_PLAYERS) {
-                return interaction.reply({
+                return interaction.followUp({
                     content: `❌ الحد الأدنى هو ${MIN_PLAYERS} لاعبين.`,
                     flags: 64
                 });
@@ -642,26 +541,109 @@ module.exports = {
             mafiaSessions.deleteLobby(interaction.channel.id);
             gameSessions.clearUserSession(interaction.user.id);
 
-            for (const player of players) {
-                await sendRoleDM(client, game, player);
-            }
-
-            await interaction.update({
+            await interaction.message.edit({
                 content: players.map(p => `<@${p.id}>`).join(' '),
                 embeds: [
                     gameEmbed(
                         '🕵️ بدأت لعبة Mafia',
-                        `تم توزيع الأدوار بالخاص.\n\n` +
-                        `👥 اللاعبين: \`${players.length}\`\n` +
+                        `تم توزيع الأدوار.\n\n` +
+                        `👥 اللاعبين: \`${players.length}\`\n\n` +
+                        `🎭 اضغط زر **كشف دوري** لتعرف دورك برسالة لا يراها غيرك.\n` +
                         `🌙 سيتم بدء مرحلة الليل الآن.`
                     )
                 ],
-                components: []
+                components: gameControlButtons(gameId)
             });
 
-            const channel = interaction.channel;
-            await startNight(client, channel, gameId);
+            await startNight(client, interaction.channel, gameId);
             return;
+        }
+
+        if (customId.startsWith('mafia_reveal_')) {
+            const gameId = customId.replace('mafia_reveal_', '');
+            const game = mafiaSessions.getGame(gameId);
+
+            if (!game) {
+                return interaction.reply({
+                    content: '❌ اللعبة غير موجودة.',
+                    flags: 64
+                });
+            }
+
+            const player = game.players.find(p => p.id === interaction.user.id);
+
+            if (!player) {
+                return interaction.reply({
+                    content: '❌ أنت لست داخل هذه اللعبة.',
+                    flags: 64
+                });
+            }
+
+            return interaction.reply({
+                embeds: [
+                    gameEmbed(
+                        '🎭 دورك في Mafia',
+                        `دورك هو: **${player.role}**\n\n${roleText(player.role)}\n\n🤫 لا تخبر أحدًا بدورك.`
+                    )
+                ],
+                flags: 64
+            });
+        }
+
+        if (customId.startsWith('mafia_night_panel_')) {
+            const gameId = customId.replace('mafia_night_panel_', '');
+            const game = mafiaSessions.getGame(gameId);
+
+            if (!game || game.phase !== 'NIGHT') {
+                return interaction.reply({
+                    content: '❌ لوحة الليل متاحة فقط أثناء الليل.',
+                    flags: 64
+                });
+            }
+
+            const player = game.players.find(p => p.id === interaction.user.id && p.alive);
+
+            if (!player) {
+                return interaction.reply({
+                    content: '❌ أنت لست لاعبًا حيًا في هذه الجولة.',
+                    flags: 64
+                });
+            }
+
+            const alive = alivePlayers(game);
+
+            if (player.role === 'Mafia') {
+                const targets = alive.filter(p => p.id !== player.id);
+
+                return interaction.reply({
+                    embeds: [gameEmbed('🔪 اختر الضحية', 'اختر اللاعب الذي تريد قتله هذه الليلة.', '#FF3333')],
+                    components: [targetSelect(`mafia_action_kill_${gameId}`, 'اختر الضحية', targets)],
+                    flags: 64
+                });
+            }
+
+            if (player.role === 'Doctor') {
+                return interaction.reply({
+                    embeds: [gameEmbed('💉 اختر الحماية', 'اختر لاعبًا لحمايته هذه الليلة.', '#00FF88')],
+                    components: [targetSelect(`mafia_action_protect_${gameId}`, 'اختر اللاعب', alive)],
+                    flags: 64
+                });
+            }
+
+            if (player.role === 'Detective') {
+                const targets = alive.filter(p => p.id !== player.id);
+
+                return interaction.reply({
+                    embeds: [gameEmbed('🕵️ اختر التحقيق', 'اختر لاعبًا لمعرفة هل هو Mafia أم لا.', '#3498DB')],
+                    components: [targetSelect(`mafia_action_investigate_${gameId}`, 'اختر اللاعب', targets)],
+                    flags: 64
+                });
+            }
+
+            return interaction.reply({
+                content: '👤 أنت مواطن، لا يوجد لديك فعل في الليل. انتظر مرحلة التصويت.',
+                flags: 64
+            });
         }
 
         if (customId.startsWith('mafia_action_')) {
@@ -687,11 +669,11 @@ module.exports = {
                 });
             }
 
-            const targetId = interaction.values[0];
-
             if (action === 'kill' && player.role !== 'Mafia') return;
             if (action === 'protect' && player.role !== 'Doctor') return;
             if (action === 'investigate' && player.role !== 'Detective') return;
+
+            const targetId = interaction.values[0];
 
             if (action === 'kill') game.actions.kill = targetId;
             if (action === 'protect') game.actions.protect = targetId;
