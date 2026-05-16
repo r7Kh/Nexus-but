@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
+const achievements = require('../data/achievements');
+
 const filePath = path.join(__dirname, '../database/games.json');
 
 function ensureFile() {
@@ -62,6 +64,22 @@ function normalizePlayer(player, user) {
     };
 }
 
+function checkAchievements(player) {
+    const unlocked = [];
+    const badges = Array.isArray(player.badges) ? [...player.badges] : [];
+
+    for (const achievement of achievements) {
+        if (!badges.includes(achievement.name) && achievement.check(player)) {
+            badges.push(achievement.name);
+            unlocked.push(achievement);
+        }
+    }
+
+    player.badges = badges;
+
+    return unlocked;
+}
+
 function getPlayer(user) {
     const data = readData();
 
@@ -71,6 +89,7 @@ function getPlayer(user) {
     }
 
     data.players[user.id] = normalizePlayer(data.players[user.id], user);
+    checkAchievements(data.players[user.id]);
     saveData(data);
 
     return data.players[user.id];
@@ -88,7 +107,9 @@ function updatePlayer(user, updates) {
         ...updates
     }, user);
 
+    checkAchievements(data.players[user.id]);
     saveData(data);
+
     return data.players[user.id];
 }
 
@@ -108,7 +129,7 @@ function addReward(user, { coins = 0, xp = 0, win = false, loss = false }) {
     const newXP = player.xp + finalXP;
     const newLevel = Math.floor(newXP / 100) + 1;
 
-    return updatePlayer(user, {
+    const updatedPlayer = updatePlayer(user, {
         coins: Math.max(0, player.coins + finalCoins),
         xp: newXP,
         level: newLevel,
@@ -118,6 +139,8 @@ function addReward(user, { coins = 0, xp = 0, win = false, loss = false }) {
         streak: win ? player.streak + 1 : 0,
         activeBoosts: player.activeBoosts
     });
+
+    return updatedPlayer;
 }
 
 function canClaimDaily(user) {
@@ -195,11 +218,14 @@ function buyItem(user, item) {
         };
     }
 
-    const inventory = [...player.inventory, {
-        id: item.id,
-        name: item.name,
-        boughtAt: new Date().toISOString()
-    }];
+    const inventory = [
+        ...player.inventory,
+        {
+            id: item.id,
+            name: item.name,
+            boughtAt: new Date().toISOString()
+        }
+    ];
 
     const badges = [...player.badges];
 
@@ -247,5 +273,6 @@ module.exports = {
     getLeaderboard,
     canClaimDaily,
     claimDaily,
-    buyItem
+    buyItem,
+    checkAchievements
 };
