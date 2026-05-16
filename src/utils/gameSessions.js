@@ -2,6 +2,7 @@ const sessionsByUser = new Map();
 const sessionsByMessage = new Map();
 
 let globalEvent = null;
+let globalEventTimeout = null;
 
 function createSession({ userId, channelId, messageId = null, type = 'hub' }) {
     const oldSession = sessionsByUser.get(userId);
@@ -106,6 +107,23 @@ function getGlobalEvent() {
     return globalEvent;
 }
 
+function clearGlobalEvent() {
+    globalEvent = null;
+
+    if (globalEventTimeout) {
+        clearTimeout(globalEventTimeout);
+        globalEventTimeout = null;
+    }
+}
+
+function setGlobalEventTimeout(timeout) {
+    if (globalEventTimeout) {
+        clearTimeout(globalEventTimeout);
+    }
+
+    globalEventTimeout = timeout;
+}
+
 module.exports = {
     createSession,
     attachMessage,
@@ -117,5 +135,7 @@ module.exports = {
     getSessionsCount,
     isOwner,
     setGlobalEvent,
-    getGlobalEvent
+    getGlobalEvent,
+    clearGlobalEvent,
+    setGlobalEventTimeout
 };
