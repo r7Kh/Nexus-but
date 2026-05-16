@@ -114,12 +114,24 @@ function updatePlayer(user, updates) {
 }
 
 function addReward(user, { coins = 0, xp = 0, win = false, loss = false }) {
+    const gameSessions = require('./gameSessions');
+
     const player = getPlayer(user);
+    const activeEvent = gameSessions.getGlobalEvent();
+
+    const eventMultiplier = activeEvent?.active
+        ? activeEvent.multiplier || 1
+        : 1;
 
     const xpMultiplier = player.activeBoosts?.xpMultiplier || 1;
-    const finalXP = Math.floor(xp * xpMultiplier);
 
-    let finalCoins = coins;
+    const finalXP = Math.floor(xp * xpMultiplier * eventMultiplier);
+
+    let finalCoins = Math.floor(coins * eventMultiplier);
+
+    if (coins < 0) {
+        finalCoins = coins;
+    }
 
     if (coins < 0 && player.activeBoosts?.coinShield) {
         finalCoins = 0;
@@ -258,11 +270,11 @@ function buyItem(user, item) {
     };
 }
 
-function getLeaderboard() {
+function getLeaderboard(type = 'coins') {
     const data = readData();
 
-    return Object.values(data.players)
-        .sort((a, b) => b.coins - a.coins)
+    return Object.values(data.players || {})
+        .sort((a, b) => (b[type] || 0) - (a[type] || 0))
         .slice(0, 10);
 }
 
