@@ -27,11 +27,12 @@ const GAME_COOLDOWNS = {
     game_fasttype: 60 * 1000
 };
 
-function btn(id, label, emoji, style = ButtonStyle.Primary) {
+function btn(id, label, emoji, style = ButtonStyle.Primary, disabled = false) {
     const button = new ButtonBuilder()
         .setCustomId(id)
         .setLabel(label)
-        .setStyle(style);
+        .setStyle(style)
+        .setDisabled(disabled);
 
     if (emoji) button.setEmoji(emoji);
     return button;
@@ -119,10 +120,200 @@ function mainButtons() {
     ];
 }
 
-async function updateGame(interaction, title, description, components, image = null) {
+async function updateGame(interaction, title, description, components, image = null, color = '#D4AF37') {
     return interaction.update({
-        embeds: [embed(title, description, image)],
+        embeds: [embed(title, description, image, color)],
         components
+    });
+}
+
+function createBombs() {
+    const bombs = new Set();
+
+    while (bombs.size < 2) {
+        bombs.add(random(1, 9));
+    }
+
+    return [...bombs];
+}
+
+function minesMultiplier(safeCount) {
+    const multipliers = {
+        0: 0,
+        1: 25,
+        2: 55,
+        3: 95,
+        4: 145,
+        5: 210,
+        6: 300,
+        7: 450
+    };
+
+    return multipliers[safeCount] || 0;
+}
+
+function minesGrid({ bombs, opened, exploded = null }) {
+    const components = [];
+
+    for (let i = 1; i <= 9; i += 3) {
+        const buttons = [];
+
+        for (let n = i; n < i + 3; n++) {
+            const isOpened = opened.includes(n);
+            const isBomb = bombs.includes(n);
+            const isExploded = exploded === n;
+
+            let label = String(n);
+            let emoji = '⬛';
+            let style = ButtonStyle.Secondary;
+            let disabled = isOpened || Boolean(exploded);
+
+            if (isOpened && !isBomb) {
+                emoji = '💎';
+                style = ButtonStyle.Success;
+            }
+
+            if ((exploded && isBomb) || isExploded) {
+                emoji = '💣';
+                style = ButtonStyle.Danger;
+                disabled = true;
+            }
+
+            buttons.push(
+                btn(
+                    `nxg_mines_pick_${bombs.join('-')}_${opened.join('-') || 'none'}_${n}`,
+                    label,
+                    emoji,
+                    style,
+                    disabled
+                )
+            );
+        }
+
+        components.push(row(buttons));
+    }
+
+    const currentReward = minesMultiplier(opened.length);
+
+    components.push(
+        row([
+            btn(
+                `nxg_mines_cashout_${bombs.join('-')}_${opened.join('-') || 'none'}`,
+                `Cashout +${currentReward}`,
+                '💰',
+                ButtonStyle.Success,
+                opened.length === 0 || Boolean(exploded)
+            ),
+            closeButton()
+        ])
+    );
+
+    return components;
+}
+
+function cardsTotal(cards) {
+    return cards.reduce((sum, card) => sum + card, 0);
+}
+
+function drawCard() {
+    return random(2, 11);
+}
+
+function blackjackRows(playerCards, dealerCards) {
+    return [
+        row([
+            btn(
+                `nxg_blackjack_hit_${playerCards.join('-')}_${dealerCards.join('-')}`,
+                'Hit',
+                '➕',
+                ButtonStyle.Primary
+            ),
+            btn(
+                `nxg_blackjack_stand_${playerCards.join('-')}_${dealerCards.join('-')}`,
+                'Stand',
+                '🛑',
+                ButtonStyle.Danger
+            )
+        ]),
+        row([closeButton()])
+    ];
+}
+
+function finishBlackjack(user, interaction, playerCards, dealerCards, action) {
+    let playerTotal = cardsTotal(playerCards);
+    let dealerTotal = cardsTotal(dealerCards);
+
+    while (dealerTotal < 17) {
+        dealerCards.push(drawCard());
+        dealerTotal = cardsTotal(dealerCards);
+    }
+
+    const playerBust = playerTotal > 21;
+    const dealerBust = dealerTotal > 21;
+
+    let resultTitle = '';
+    let resultText = '';
+    let coins = 0;
+    let xp = 0;
+    let win = false;
+    let loss = false;
+    let color = '#D4AF37';
+
+    if (playerBust) {
+        resultTitle = '💥 Bust | Blackjack';
+        resultText = 'تجاوزت 21... الديلر ضحك عليك.';
+        coins = -35;
+        xp = 10;
+        loss = true;
+        color = '#FF3333';
+    } else if (dealerBust) {
+        resultTitle = '✅ ربحت | Blackjack';
+        resultText = 'الديلر تجاوز 21، الفوز إلك.';
+        coins = 90;
+        xp = 45;
+        win = true;
+        color = '#00FF88';
+    } else if (playerTotal > dealerTotal) {
+        resultTitle = '✅ ربحت | Blackjack';
+        resultText = 'لعبتها صح وتغلبت على الديلر.';
+        coins = playerTotal === 21 ? 120 : 80;
+        xp = playerTotal === 21 ? 60 : 40;
+        win = true;
+        color = '#00FF88';
+    } else if (playerTotal === dealerTotal) {
+        resultTitle = '⚖️ تعادل | Blackjack';
+        resultText = 'تعادل بارد... بس أحسن من خسارة.';
+        coins = 10;
+        xp = 15;
+        color = '#3498DB';
+    } else {
+        resultTitle = '❌ خسرت | Blackjack';
+        resultText = 'الديلر كان أقوى منك هالمرة.';
+        coins = -25;
+        xp = 10;
+        loss = true;
+        color = '#FF3333';
+    }
+
+    const player = reward(user, { coins, xp, win, loss });
+
+    return interaction.update({
+        embeds: [
+            embed(
+                resultTitle,
+                `${user}\n\n` +
+                `قرارك الأخير: **${action}**\n\n` +
+                `🃏 أوراقك: **${playerCards.join(' + ')}** = \`${playerTotal}\`\n` +
+                `🎴 أوراق الديلر: **${dealerCards.join(' + ')}** = \`${dealerTotal}\`\n\n` +
+                `${resultText}\n\n` +
+                `💰 Coins: \`${coins > 0 ? '+' : ''}${coins}\`\n` +
+                `⭐ XP: \`+${xp}\`\n` +
+                `رصيدك الحالي: \`${player.coins}\` Coins`,
+                null,
+                color
+            )
+        ],
+        components: mainButtons()
     });
 }
 
@@ -566,40 +757,160 @@ module.exports = {
         }
 
         if (customId === 'game_mines') {
-            const bomb = random(1, 9);
+            const bombs = createBombs();
+            const opened = [];
 
             return updateGame(
                 interaction,
-                '💣 NEXUS Mines',
-                `${user}\n\nاختر مربع واحد وحاول تتجنب القنبلة.`,
-                [
-                    row([1, 2, 3].map(n => btn(`nxg_mines_${bomb}_${n}`, String(n), '⬛'))),
-                    row([4, 5, 6].map(n => btn(`nxg_mines_${bomb}_${n}`, String(n), '⬛'))),
-                    row([7, 8, 9].map(n => btn(`nxg_mines_${bomb}_${n}`, String(n), '⬛'))),
-                    row([closeButton()])
-                ],
-                'https://images.unsplash.com/photo-1511512578047-dfb367046420'
+                '💣 NEXUS Mines V2',
+                `${user}\n\n` +
+                `اختر خانة وابتعد عن القنابل.\n\n` +
+                `💣 عدد القنابل: \`2\`\n` +
+                `💎 الخانات الآمنة المفتوحة: \`0\`\n` +
+                `💰 الربح الحالي: \`0 Coins\`\n\n` +
+                `كل خانة آمنة تزيد الربح.\nاضغط **Cashout** قبل ما تنفجر.`,
+                minesGrid({ bombs, opened }),
+                null,
+                '#D4AF37'
             );
         }
 
-        if (customId.startsWith('nxg_mines_')) {
+        if (customId.startsWith('nxg_mines_pick_')) {
             const parts = customId.split('_');
-            const bomb = Number(parts[2]);
-            const pick = Number(parts[3]);
-            const win = pick !== bomb;
 
-            const coins = win ? 55 : -35;
-            const xp = win ? 25 : 12;
+            const bombs = parts[3].split('-').map(Number);
+            const opened = parts[4] === 'none'
+                ? []
+                : parts[4].split('-').map(Number);
 
-            const player = reward(user, { coins, xp, win, loss: !win });
+            const pick = Number(parts[5]);
+
+            if (opened.includes(pick)) {
+                return interaction.reply({
+                    content: '❌ هذه الخانة مفتوحة بالفعل.',
+                    flags: 64
+                });
+            }
+
+            const isBomb = bombs.includes(pick);
+
+            if (isBomb) {
+                const coins = -40;
+                const xp = 12;
+
+                const player = reward(user, {
+                    coins,
+                    xp,
+                    win: false,
+                    loss: true
+                });
+
+                return interaction.update({
+                    embeds: [
+                        embed(
+                            '💥 انفجر اللغم | Mines',
+                            `${user}\n\n` +
+                            `اخترت الخانة: **${pick}**\n` +
+                            `وكانت قنبلة 💣\n\n` +
+                            `💰 Coins: \`${coins}\`\n` +
+                            `⭐ XP: \`+${xp}\`\n` +
+                            `رصيدك الحالي: \`${player.coins}\` Coins\n\n` +
+                            `يا ساتر... كنت قريب من الكاش آوت.`,
+                            null,
+                            '#FF3333'
+                        )
+                    ],
+                    components: mainButtons()
+                });
+            }
+
+            const newOpened = [...opened, pick];
+            const currentReward = minesMultiplier(newOpened.length);
+
+            if (newOpened.length >= 7) {
+                const coins = currentReward + 150;
+                const xp = 80;
+
+                const player = reward(user, {
+                    coins,
+                    xp,
+                    win: true,
+                    loss: false
+                });
+
+                return interaction.update({
+                    embeds: [
+                        embed(
+                            '💎 PERFECT CLEAR | Mines',
+                            `${user}\n\n` +
+                            `فتحت كل الخانات الآمنة بدون ما تنفجر!\n\n` +
+                            `💰 Coins: \`+${coins}\`\n` +
+                            `⭐ XP: \`+${xp}\`\n` +
+                            `رصيدك الحالي: \`${player.coins}\` Coins\n\n` +
+                            `هذا لعب نظيف جدًا 🔥`,
+                            null,
+                            '#00FF88'
+                        )
+                    ],
+                    components: mainButtons()
+                });
+            }
 
             return interaction.update({
                 embeds: [
                     embed(
-                        win ? '✅ نجوت | Mines' : '💥 انفجر اللغم | Mines',
-                        `${user}\n\nاختيارك: **${pick}**\nالقنبلة كانت في: **${bomb}**\n\n${win ? 'نجوت، بس قلبك أكيد وقف.' : 'بوووم. كانت واضحة شوي.'}\n\n💰 Coins: \`${coins > 0 ? '+' : ''}${coins}\`\n⭐ XP: \`+${xp}\`\nرصيدك الحالي: \`${player.coins}\` Coins`,
+                        '💣 NEXUS Mines V2',
+                        `${user}\n\n` +
+                        `✅ الخانة **${pick}** آمنة!\n\n` +
+                        `💣 عدد القنابل: \`2\`\n` +
+                        `💎 الخانات الآمنة المفتوحة: \`${newOpened.length}\`\n` +
+                        `💰 الربح الحالي: \`${currentReward} Coins\`\n\n` +
+                        `تقدر تكمل وتخاطر... أو تضغط **Cashout** وتسحب ربحك.`,
                         null,
-                        win ? '#00FF88' : '#FF3333'
+                        '#D4AF37'
+                    )
+                ],
+                components: minesGrid({ bombs, opened: newOpened })
+            });
+        }
+
+        if (customId.startsWith('nxg_mines_cashout_')) {
+            const parts = customId.split('_');
+
+            const opened = parts[4] === 'none'
+                ? []
+                : parts[4].split('-').map(Number);
+
+            if (!opened.length) {
+                return interaction.reply({
+                    content: '❌ لازم تفتح خانة آمنة واحدة على الأقل قبل Cashout.',
+                    flags: 64
+                });
+            }
+
+            const coins = minesMultiplier(opened.length);
+            const xp = 15 + opened.length * 8;
+
+            const player = reward(user, {
+                coins,
+                xp,
+                win: true,
+                loss: false
+            });
+
+            return interaction.update({
+                embeds: [
+                    embed(
+                        '💰 Cashout ناجح | Mines',
+                        `${user}\n\n` +
+                        `سحبت أرباحك بنجاح قبل الانفجار.\n\n` +
+                        `💎 الخانات الآمنة: \`${opened.length}\`\n` +
+                        `💰 Coins: \`+${coins}\`\n` +
+                        `⭐ XP: \`+${xp}\`\n` +
+                        `رصيدك الحالي: \`${player.coins}\` Coins\n\n` +
+                        `قرار ذكي... بس كنت تقدر تطمع أكثر 😈`,
+                        null,
+                        '#00FF88'
                     )
                 ],
                 components: mainButtons()
@@ -607,51 +918,63 @@ module.exports = {
         }
 
         if (customId === 'game_blackjack') {
-            const total = random(2, 11) + random(2, 11);
-            const dealer = random(14, 21);
+            const playerCards = [drawCard(), drawCard()];
+            const dealerCards = [drawCard(), drawCard()];
+            const playerTotal = cardsTotal(playerCards);
 
             return updateGame(
                 interaction,
-                '🃏 NEXUS Blackjack',
-                `${user}\n\nيدك الحالية: **${total}**\nالديلر مخفي.\n\nاختر Hit أو Stand.`,
-                [
-                    row([
-                        btn(`nxg_blackjack_hit_${total}_${dealer}`, 'Hit', '➕'),
-                        btn(`nxg_blackjack_stand_${total}_${dealer}`, 'Stand', '🛑')
-                    ]),
-                    row([closeButton()])
-                ],
-                'https://images.unsplash.com/photo-1511193311914-0346f16efe90'
+                '🃏 NEXUS Blackjack V2',
+                `${user}\n\n` +
+                `🃏 أوراقك: **${playerCards.join(' + ')}** = \`${playerTotal}\`\n` +
+                `🎴 ورقة الديلر الظاهرة: **${dealerCards[0]}**\n\n` +
+                `اختر:\n` +
+                `➕ **Hit** لسحب ورقة إضافية\n` +
+                `🛑 **Stand** لإنهاء دورك وكشف الديلر`,
+                blackjackRows(playerCards, dealerCards),
+                'https://images.unsplash.com/photo-1511193311914-0346f16efe90',
+                '#D4AF37'
             );
         }
 
         if (customId.startsWith('nxg_blackjack_')) {
             const parts = customId.split('_');
             const action = parts[2];
-            let total = Number(parts[3]);
-            const dealer = Number(parts[4]);
+            const playerCards = parts[3].split('-').map(Number);
+            const dealerCards = parts[4].split('-').map(Number);
 
-            if (action === 'hit') total += random(2, 11);
+            if (action === 'hit') {
+                playerCards.push(drawCard());
+                const playerTotal = cardsTotal(playerCards);
 
-            const win = total <= 21 && total > dealer;
-            const draw = total === dealer;
+                if (playerTotal > 21) {
+                    return finishBlackjack(user, interaction, playerCards, dealerCards, 'Hit');
+                }
 
-            const coins = draw ? 5 : win ? 70 : -25;
-            const xp = draw ? 12 : win ? 40 : 10;
+                if (playerTotal === 21) {
+                    return finishBlackjack(user, interaction, playerCards, dealerCards, 'Hit');
+                }
 
-            const player = reward(user, { coins, xp, win, loss: !win && !draw });
+                return interaction.update({
+                    embeds: [
+                        embed(
+                            '🃏 NEXUS Blackjack V2',
+                            `${user}\n\n` +
+                            `سحبت ورقة جديدة.\n\n` +
+                            `🃏 أوراقك: **${playerCards.join(' + ')}** = \`${playerTotal}\`\n` +
+                            `🎴 ورقة الديلر الظاهرة: **${dealerCards[0]}**\n\n` +
+                            `تكمل Hit؟ ولا توقف Stand؟`,
+                            'https://images.unsplash.com/photo-1511193311914-0346f16efe90',
+                            '#D4AF37'
+                        )
+                    ],
+                    components: blackjackRows(playerCards, dealerCards)
+                });
+            }
 
-            return interaction.update({
-                embeds: [
-                    embed(
-                        draw ? '⚖️ تعادل | Blackjack' : win ? '✅ ربحت | Blackjack' : '❌ خسرت | Blackjack',
-                        `${user}\n\nقرارك: **${action}**\nيدك: **${total}**\nيد الديلر: **${dealer}**\n\n${win ? 'لعبتها صح.' : draw ? 'تعادل بارد.' : 'الديلر ضحك عليك.'}\n\n💰 Coins: \`${coins > 0 ? '+' : ''}${coins}\`\n⭐ XP: \`+${xp}\`\nرصيدك الحالي: \`${player.coins}\` Coins`,
-                        null,
-                        win ? '#00FF88' : draw ? '#3498DB' : '#FF3333'
-                    )
-                ],
-                components: mainButtons()
-            });
+            if (action === 'stand') {
+                return finishBlackjack(user, interaction, playerCards, dealerCards, 'Stand');
+            }
         }
 
         if (customId === 'game_fasttype') {
