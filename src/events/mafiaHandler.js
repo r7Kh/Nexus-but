@@ -156,11 +156,12 @@ function roleEmbed(player) {
         return gameEmbed(
             '🕵️ دورك: Detective',
             `أنت **المحقق**.\n\n` +
-            `مهمتك في الليل اختيار لاعب مشكوك فيه.\n` +
-            `النتيجة لن تكشف الدور مباشرة، لكنها تعطيك مؤشر:\n` +
-            `🔪 مشبوه جدًا\n` +
-            `👤 يبدو بريئًا\n\n` +
-            `⚠️ لا تكشف دورك بسرعة، العبها بذكاء.`,
+            `مهمتك في الليل اختيار لاعب تشك فيه.\n` +
+            `بعد اختيار اللاعب، أنت تختار تقييمك له:\n` +
+            `🟢 موثوق\n` +
+            `🟡 عليه شك\n` +
+            `🔴 مشبوه جدًا\n\n` +
+            `⚠️ البوت لن يكشف لك الحقيقة. تقييمك هو رأيك أنت.`,
             '#3498DB'
         );
     }
@@ -195,7 +196,7 @@ async function startNight(client, channel, gameId) {
                 `حلّ الليل على المدينة...\n\n` +
                 `🔪 المافيا يختار ضحية.\n` +
                 `💉 الدكتور يختار لاعبًا للحماية.\n` +
-                `🕵️ المحقق يختار لاعبًا للتحقيق.\n\n` +
+                `🕵️ المحقق يختار لاعبًا للتقييم.\n\n` +
                 `اضغط **لوحة الليل** إذا كان لديك دور فعال.\n` +
                 `⏱️ من لا يتفاعل خلال دقيقة يتم إقصاؤه.`
             )
@@ -709,12 +710,12 @@ module.exports = {
                     embeds: [
                         gameEmbed(
                             '🕵️ اختر التحقيق',
-                            'اختر اللاعب الذي تشك فيه. النتيجة ستظهر كمؤشر وليس كشف مباشر للدور.',
+                            'اختر اللاعب الذي تريد مراقبته، وبعدها قيّمه حسب رأيك.',
                             '#3498DB'
                         )
                     ],
                     components: [
-                        targetSelect(`mafia_action_investigate_${gameId}`, 'اختر اللاعب المشبوه', targets)
+                        targetSelect(`mafia_action_investigate_${gameId}`, 'اختر اللاعب', targets)
                     ],
                     flags: 64
                 });
@@ -740,7 +741,9 @@ module.exports = {
                 });
             }
 
-            const player = game.players.find(p => p.id === interaction.user.id && p.alive);
+            const player = game.players.find(
+                p => p.id === interaction.user.id && p.alive
+            );
 
             if (!player) {
                 return interaction.reply({
@@ -756,30 +759,55 @@ module.exports = {
             const targetId = interaction.values[0];
             const target = game.players.find(p => p.id === targetId);
 
-            if (action === 'kill') game.actions.kill = targetId;
-            if (action === 'protect') game.actions.protect = targetId;
+            if (!target) {
+                return interaction.reply({
+                    content: '❌ اللاعب غير موجود.',
+                    flags: 64
+                });
+            }
+
+            if (action === 'kill') {
+                game.actions.kill = targetId;
+
+                await interaction.reply({
+                    content: `🔪 تم اختيار <@${targetId}> كضحية الليلة.`,
+                    flags: 64
+                });
+            }
+
+            if (action === 'protect') {
+                game.actions.protect = targetId;
+
+                await interaction.reply({
+                    content: `💉 سيتم حماية <@${targetId}> هذه الليلة.`,
+                    flags: 64
+                });
+            }
 
             if (action === 'investigate') {
                 game.actions.investigate = targetId;
-
-                const isMafia = target?.role === 'Mafia';
+                game.actions.investigateTarget = targetId;
 
                 await interaction.reply({
                     embeds: [
                         gameEmbed(
-                            '🕵️ نتيجة التحقيق',
-                            `اللاعب: <@${targetId}>\n\n` +
-                            `${isMafia
-                                ? '🔪 هذا اللاعب **مشبوه جدًا**.\nراقبه، لكن لا تكشف نفسك بسرعة.'
-                                : '👤 هذا اللاعب **يبدو بريئًا**.\nلكن لا تثق بأحد 100%.'}`,
-                            isMafia ? '#FF3333' : '#3498DB'
+                            '🕵️ تقييم المحقق',
+                            `اللاعب الذي راقبته: <@${targetId}>\n\n` +
+                            `اختر تقييمك لهذا اللاعب:\n\n` +
+                            `🟢 موثوق\n` +
+                            `🟡 عليه شك\n` +
+                            `🔴 مشبوه جدًا\n\n` +
+                            `⚠️ هذا التقييم من اختيارك أنت، والبوت لن يكشف الحقيقة.`,
+                            '#3498DB'
                         )
                     ],
-                    flags: 64
-                });
-            } else {
-                await interaction.reply({
-                    content: `✅ تم تسجيل اختيارك على <@${targetId}>.`,
+                    components: [
+                        row([
+                            btn(`mafia_detective_trusted_${gameId}_${targetId}`, 'موثوق', '🟢', ButtonStyle.Success),
+                            btn(`mafia_detective_suspect_${gameId}_${targetId}`, 'عليه شك', '🟡', ButtonStyle.Primary),
+                            btn(`mafia_detective_danger_${gameId}_${targetId}`, 'مشبوه جدًا', '🔴', ButtonStyle.Danger)
+                        ])
+                    ],
                     flags: 64
                 });
             }
@@ -791,11 +819,86 @@ module.exports = {
                 .map(role => aliveRole(game, role))
                 .filter(Boolean);
 
-            const allDone = required.every(p => game.responded.has(p.id));
+            const allDone = required.every(p =>
+                game.responded.has(p.id)
+            );
 
             if (allDone) {
-                const channel = await client.channels.fetch(game.channelId).catch(() => null);
-                if (channel) await resolveNight(client, channel, gameId);
+                const channel = await client.channels
+                    .fetch(game.channelId)
+                    .catch(() => null);
+
+                if (channel) {
+                    await resolveNight(client, channel, gameId);
+                }
+            }
+
+            return;
+        }
+
+        if (customId.startsWith('mafia_detective_')) {
+            const parts = customId.split('_');
+
+            const rating = parts[2];
+            const gameId = `${parts[3]}_${parts[4]}`;
+            const targetId = parts.slice(5).join('_');
+
+            const game = mafiaSessions.getGame(gameId);
+
+            if (!game || game.phase !== 'NIGHT') {
+                return interaction.reply({
+                    content: '❌ انتهت مرحلة التحقيق أو اللعبة غير موجودة.',
+                    flags: 64
+                });
+            }
+
+            const detective = game.players.find(
+                p =>
+                    p.id === interaction.user.id &&
+                    p.role === 'Detective' &&
+                    p.alive
+            );
+
+            if (!detective) {
+                return interaction.reply({
+                    content: '❌ هذا الزر خاص بالمحقق فقط.',
+                    flags: 64
+                });
+            }
+
+            let ratingText = '🟡 عليه شك';
+
+            if (rating === 'trusted') ratingText = '🟢 موثوق';
+            if (rating === 'suspect') ratingText = '🟡 عليه شك';
+            if (rating === 'danger') ratingText = '🔴 مشبوه جدًا';
+
+            await interaction.update({
+                embeds: [
+                    gameEmbed(
+                        '✅ تم إرسال تقريرك',
+                        `تم تسجيل تقييمك على <@${targetId}>.\n\n` +
+                        `التقييم: **${ratingText}**`,
+                        '#3498DB'
+                    )
+                ],
+                components: []
+            });
+
+            const channel = await client.channels
+                .fetch(game.channelId)
+                .catch(() => null);
+
+            if (channel) {
+                await channel.send({
+                    embeds: [
+                        gameEmbed(
+                            '🕵️ تقرير المحقق',
+                            `المحقق راقب اللاعب: <@${targetId}>\n\n` +
+                            `التقييم: **${ratingText}**\n\n` +
+                            `⚠️ هذا مجرد رأي المحقق وليس كشفًا مؤكدًا من البوت.`
+                        )
+                    ]
+                });
             }
 
             return;
