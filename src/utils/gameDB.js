@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const achievements = require('../data/achievements');
+const gameSessions = require('./gameSessions');
 
 const filePath = path.join(__dirname, '../database/games.json');
 
@@ -66,10 +67,15 @@ function normalizePlayer(player, user) {
 
 function checkAchievements(player) {
     const unlocked = [];
-    const badges = Array.isArray(player.badges) ? [...player.badges] : [];
+    const badges = Array.isArray(player.badges)
+        ? [...player.badges]
+        : [];
 
     for (const achievement of achievements) {
-        if (!badges.includes(achievement.name) && achievement.check(player)) {
+        if (
+            !badges.includes(achievement.name) &&
+            achievement.check(player)
+        ) {
             badges.push(achievement.name);
             unlocked.push(achievement);
         }
@@ -88,8 +94,13 @@ function getPlayer(user) {
         saveData(data);
     }
 
-    data.players[user.id] = normalizePlayer(data.players[user.id], user);
+    data.players[user.id] = normalizePlayer(
+        data.players[user.id],
+        user
+    );
+
     checkAchievements(data.players[user.id]);
+
     saveData(data);
 
     return data.players[user.id];
@@ -108,48 +119,83 @@ function updatePlayer(user, updates) {
     }, user);
 
     checkAchievements(data.players[user.id]);
+
     saveData(data);
 
     return data.players[user.id];
 }
 
-function addReward(user, { coins = 0, xp = 0, win = false, loss = false }) {
-    const gameSessions = require('./gameSessions');
+async function addReward(user, {
+    coins = 0,
+    xp = 0,
+    win = false,
+    loss = false
+}) {
 
     const player = getPlayer(user);
-    const activeEvent = gameSessions.getGlobalEvent();
 
-    const eventMultiplier = activeEvent?.active
-        ? activeEvent.multiplier || 1
-        : 1;
+    const activeEvent =
+        await gameSessions.getGlobalEvent();
 
-    const xpMultiplier = player.activeBoosts?.xpMultiplier || 1;
+    const eventMultiplier =
+        activeEvent?.active
+            ? activeEvent.multiplier || 1
+            : 1;
 
-    const finalXP = Math.floor(xp * xpMultiplier * eventMultiplier);
+    const xpMultiplier =
+        player.activeBoosts?.xpMultiplier || 1;
 
-    let finalCoins = Math.floor(coins * eventMultiplier);
+    const finalXP = Math.floor(
+        xp * xpMultiplier * eventMultiplier
+    );
+
+    let finalCoins = Math.floor(
+        coins * eventMultiplier
+    );
 
     if (coins < 0) {
         finalCoins = coins;
     }
 
-    if (coins < 0 && player.activeBoosts?.coinShield) {
+    if (
+        coins < 0 &&
+        player.activeBoosts?.coinShield
+    ) {
         finalCoins = 0;
         player.activeBoosts.coinShield = false;
     }
 
     const newXP = player.xp + finalXP;
-    const newLevel = Math.floor(newXP / 100) + 1;
+
+    const newLevel =
+        Math.floor(newXP / 100) + 1;
 
     const updatedPlayer = updatePlayer(user, {
-        coins: Math.max(0, player.coins + finalCoins),
+        coins: Math.max(
+            0,
+            player.coins + finalCoins
+        ),
+
         xp: newXP,
+
         level: newLevel,
-        wins: player.wins + (win ? 1 : 0),
-        losses: player.losses + (loss ? 1 : 0),
-        gamesPlayed: player.gamesPlayed + 1,
-        streak: win ? player.streak + 1 : 0,
-        activeBoosts: player.activeBoosts
+
+        wins:
+            player.wins + (win ? 1 : 0),
+
+        losses:
+            player.losses + (loss ? 1 : 0),
+
+        gamesPlayed:
+            player.gamesPlayed + 1,
+
+        streak:
+            win
+                ? player.streak + 1
+                : 0,
+
+        activeBoosts:
+            player.activeBoosts
     });
 
     return updatedPlayer;
@@ -159,26 +205,40 @@ function canClaimDaily(user) {
     const player = getPlayer(user);
 
     if (!player.lastDaily) {
-        return { canClaim: true, remaining: 0 };
+        return {
+            canClaim: true,
+            remaining: 0
+        };
     }
 
     const now = Date.now();
-    const last = new Date(player.lastDaily).getTime();
-    const cooldown = 24 * 60 * 60 * 1000;
+
+    const last =
+        new Date(player.lastDaily).getTime();
+
+    const cooldown =
+        24 * 60 * 60 * 1000;
+
     const diff = now - last;
 
     if (diff >= cooldown) {
-        return { canClaim: true, remaining: 0 };
+        return {
+            canClaim: true,
+            remaining: 0
+        };
     }
 
     return {
         canClaim: false,
-        remaining: Math.ceil((cooldown - diff) / 1000)
+        remaining: Math.ceil(
+            (cooldown - diff) / 1000
+        )
     };
 }
 
 function claimDaily(user) {
     const player = getPlayer(user);
+
     const check = canClaimDaily(user);
 
     if (!check.canClaim) {
@@ -190,25 +250,49 @@ function claimDaily(user) {
     }
 
     const now = Date.now();
-    const last = player.lastDaily ? new Date(player.lastDaily).getTime() : 0;
-    const twoDays = 48 * 60 * 60 * 1000;
 
-    const newDailyStreak = last && now - last <= twoDays
-        ? player.dailyStreak + 1
-        : 1;
+    const last =
+        player.lastDaily
+            ? new Date(player.lastDaily).getTime()
+            : 0;
+
+    const twoDays =
+        48 * 60 * 60 * 1000;
+
+    const newDailyStreak =
+        last && now - last <= twoDays
+            ? player.dailyStreak + 1
+            : 1;
 
     const baseCoins = 150;
-    const streakBonus = Math.min(newDailyStreak * 25, 250);
-    const xp = 50;
-    const coins = baseCoins + streakBonus;
 
-    const updatedPlayer = updatePlayer(user, {
-        coins: player.coins + coins,
-        xp: player.xp + xp,
-        level: Math.floor((player.xp + xp) / 100) + 1,
-        dailyStreak: newDailyStreak,
-        lastDaily: new Date().toISOString()
-    });
+    const streakBonus =
+        Math.min(newDailyStreak * 25, 250);
+
+    const xp = 50;
+
+    const coins =
+        baseCoins + streakBonus;
+
+    const updatedPlayer =
+        updatePlayer(user, {
+            coins:
+                player.coins + coins,
+
+            xp:
+                player.xp + xp,
+
+            level:
+                Math.floor(
+                    (player.xp + xp) / 100
+                ) + 1,
+
+            dailyStreak:
+                newDailyStreak,
+
+            lastDaily:
+                new Date().toISOString()
+        });
 
     return {
         claimed: true,
@@ -235,7 +319,8 @@ function buyItem(user, item) {
         {
             id: item.id,
             name: item.name,
-            boughtAt: new Date().toISOString()
+            boughtAt:
+                new Date().toISOString()
         }
     ];
 
@@ -245,7 +330,10 @@ function buyItem(user, item) {
         ...player.activeBoosts
     };
 
-    if (item.type === 'badge' && !badges.includes(item.name)) {
+    if (
+        item.type === 'badge' &&
+        !badges.includes(item.name)
+    ) {
         badges.push(item.name);
     }
 
@@ -257,12 +345,17 @@ function buyItem(user, item) {
         activeBoosts.coinShield = true;
     }
 
-    const updatedPlayer = updatePlayer(user, {
-        coins: player.coins - item.price,
-        inventory,
-        badges,
-        activeBoosts
-    });
+    const updatedPlayer =
+        updatePlayer(user, {
+            coins:
+                player.coins - item.price,
+
+            inventory,
+
+            badges,
+
+            activeBoosts
+        });
 
     return {
         success: true,
@@ -273,8 +366,14 @@ function buyItem(user, item) {
 function getLeaderboard(type = 'coins') {
     const data = readData();
 
-    return Object.values(data.players || {})
-        .sort((a, b) => (b[type] || 0) - (a[type] || 0))
+    return Object.values(
+        data.players || {}
+    )
+        .sort(
+            (a, b) =>
+                (b[type] || 0) -
+                (a[type] || 0)
+        )
         .slice(0, 10);
 }
 

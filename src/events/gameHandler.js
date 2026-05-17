@@ -87,7 +87,7 @@ function embed(title, description, image = null, color = '#D4AF37') {
 }
 
 function reward(user, { coins, xp, win, loss }) {
-    return gameDB.addReward(user, { coins, xp, win, loss });
+    return await gameDB.addReward(user, { coins, xp, win, loss });
 }
 
 function mainButtons() {
@@ -338,7 +338,7 @@ module.exports = {
             });
         }
 
-        const session = gameSessions.getMessageSession(interaction.message.id);
+        const session = await gameSessions.getMessageSession(interaction.message.id);
 
         if (!session) {
             return interaction.reply({

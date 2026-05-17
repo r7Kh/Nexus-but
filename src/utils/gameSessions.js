@@ -1,114 +1,113 @@
-const sessionsByUser = new Map();
-const sessionsByMessage = new Map();
+const GameSession = require('../models/GameSession');
+const GlobalEvent = require('../models/GlobalEvent');
 
-let globalEvent = null;
 let globalEventTimeout = null;
 
-function createSession({ userId, channelId, messageId = null, type = 'hub' }) {
-    const oldSession = sessionsByUser.get(userId);
+async function createSession({
+    userId,
+    channelId,
+    messageId = null,
+    type = 'hub',
+    data = {},
+    expiresAt = null
+}) {
 
-    if (oldSession?.messageId) {
-        sessionsByMessage.delete(oldSession.messageId);
-    }
+    await GameSession.deleteMany({
+        userId
+    });
 
-    const session = {
+    return await GameSession.create({
         userId,
         channelId,
         messageId,
         type,
-        createdAt: Date.now(),
-        updatedAt: Date.now()
-    };
-
-    sessionsByUser.set(userId, session);
-
-    if (messageId) {
-        sessionsByMessage.set(messageId, session);
-    }
-
-    return session;
+        data,
+        expiresAt
+    });
 }
 
-function attachMessage(userId, messageId) {
-    const session = sessionsByUser.get(userId);
+async function attachMessage(userId, messageId) {
+    const session = await GameSession.findOne({
+        userId
+    });
+
     if (!session) return null;
 
-    if (session.messageId) {
-        sessionsByMessage.delete(session.messageId);
-    }
-
     session.messageId = messageId;
-    session.updatedAt = Date.now();
 
-    sessionsByUser.set(userId, session);
-    sessionsByMessage.set(messageId, session);
+    await session.save();
 
     return session;
 }
 
-function getUserSession(userId) {
-    return sessionsByUser.get(userId) || null;
+async function getUserSession(userId) {
+    return await GameSession.findOne({
+        userId
+    });
 }
 
-function getMessageSession(messageId) {
-    return sessionsByMessage.get(messageId) || null;
+async function getMessageSession(messageId) {
+    return await GameSession.findOne({
+        messageId
+    });
 }
 
-function clearUserSession(userId) {
-    const session = sessionsByUser.get(userId);
-
-    if (session?.messageId) {
-        sessionsByMessage.delete(session.messageId);
-    }
-
-    sessionsByUser.delete(userId);
+async function clearUserSession(userId) {
+    await GameSession.deleteMany({
+        userId
+    });
 }
 
-function clearMessageSession(messageId) {
-    const session = sessionsByMessage.get(messageId);
-
-    if (session) {
-        sessionsByUser.delete(session.userId);
-    }
-
-    sessionsByMessage.delete(messageId);
+async function clearMessageSession(messageId) {
+    await GameSession.deleteMany({
+        messageId
+    });
 }
 
-function clearAllSessions() {
-    const count = sessionsByUser.size;
+async function clearAllSessions() {
+    const count = await GameSession.countDocuments();
 
-    sessionsByUser.clear();
-    sessionsByMessage.clear();
+    await GameSession.deleteMany({});
 
     return count;
 }
 
-function getSessionsCount() {
-    return sessionsByUser.size;
+async function getSessionsCount() {
+    return await GameSession.countDocuments();
 }
 
-function isOwner(userId, messageId) {
-    const session = getMessageSession(messageId);
+async function isOwner(userId, messageId) {
+    const session = await getMessageSession(messageId);
+
     return session && session.userId === userId;
 }
 
-function setGlobalEvent(event) {
-    globalEvent = event;
+async function setGlobalEvent(event) {
+    await GlobalEvent.deleteMany({});
+
+    return await GlobalEvent.create(event);
 }
 
-function getGlobalEvent() {
-    if (!globalEvent) return null;
+async function getGlobalEvent() {
+    const event = await GlobalEvent.findOne({
+        active: true
+    });
 
-    if (globalEvent.expiresAt && Date.now() > globalEvent.expiresAt) {
-        globalEvent = null;
+    if (!event) return null;
+
+    if (
+        event.expiresAt &&
+        Date.now() > new Date(event.expiresAt).getTime()
+    ) {
+        await GlobalEvent.deleteMany({});
         return null;
     }
 
-    return globalEvent;
+    return event;
 }
 
-function clearGlobalEvent() {
-    globalEvent = null;
+async function clearGlobalEvent() {
+    await GlobalEvent.deleteMany({});
 
     if (globalEventTimeout) {
         clearTimeout(globalEventTimeout);
