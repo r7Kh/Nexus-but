@@ -220,10 +220,13 @@ module.exports = {
 
         const customId = interaction.customId;
 
-        if (
-            !customId.startsWith('game_') &&
-            !customId.startsWith('nxg_')
-        ) return;
+       if (
+    customId.startsWith('game_') ||
+    customId.startsWith('nxg_') ||
+    customId.startsWith('mafia_')
+) {
+    return;
+}
 
         if (interaction.channel.id !== GAME_CHANNEL_ID) {
             return interaction.reply({
