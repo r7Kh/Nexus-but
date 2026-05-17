@@ -1,6 +1,7 @@
 const {
     SlashCommandBuilder,
-    PermissionFlagsBits
+    PermissionFlagsBits,
+    ChannelType
 } = require('discord.js');
 
 const ALLOWED_ROLE_IDS = [
@@ -49,7 +50,7 @@ module.exports = {
         const channel = interaction.options.getChannel('channel');
         const text = interaction.options.getString('text');
 
-        if (!channel || channel.type !== 2) {
+        if (!channel || channel.type !== ChannelType.GuildVoice) {
             return interaction.reply({
                 content: '❌ يجب اختيار روم صوتي.',
                 flags: 64
@@ -57,13 +58,20 @@ module.exports = {
         }
 
         try {
-            await channel.setStatus(text);
+            await interaction.client.rest.put(
+                `/channels/${channel.id}/voice-status`,
+                {
+                    body: {
+                        status: text
+                    }
+                }
+            );
 
             return interaction.reply({
                 content:
-                    `✅ تم تغيير حالة الروم الصوتي بنجاح.\n\n` +
+                    `✅ تم تغيير حالة الروم الصوتي.\n\n` +
                     `🎤 الروم: ${channel}\n` +
-                    `📝 الحالة: \`${text}\``,
+                    `📝 الحالة الجديدة:\n\`${text}\``,
                 flags: 64
             });
 
@@ -72,9 +80,10 @@ module.exports = {
 
             return interaction.reply({
                 content:
-                    '❌ فشل تغيير الحالة.\n' +
-                    'تأكد أن البوت لديه صلاحية:\n' +
-                    '`SET_VOICE_CHANNEL_STATUS`',
+                    '❌ فشل تغيير الحالة.\n\n' +
+                    'تأكد أن البوت لديه:\n' +
+                    '`SET_VOICE_CHANNEL_STATUS`\n' +
+                    '`MANAGE_CHANNELS`',
                 flags: 64
             });
         }
