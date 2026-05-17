@@ -86,7 +86,7 @@ function embed(title, description, image = null, color = '#D4AF37') {
     return e;
 }
 
-function reward(user, { coins, xp, win, loss }) {
+async function reward(user, { coins, xp, win, loss }) {
     return await gameDB.addReward(user, { coins, xp, win, loss });
 }
 
@@ -295,7 +295,7 @@ function finishBlackjack(user, interaction, playerCards, dealerCards, action) {
         color = '#FF3333';
     }
 
-    const player = reward(user, { coins, xp, win, loss });
+    const player = await reward(user, { coins, xp, win, loss });
 
     return interaction.update({
         embeds: [
@@ -459,7 +459,7 @@ module.exports = {
             const coins = win ? 80 : -15;
             const xp = win ? 35 : 8;
 
-            const player = reward(user, { coins, xp, win, loss: !win });
+            const player = await reward(user, { coins, xp, win, loss: !win });
 
             return interaction.update({
                 embeds: [
@@ -498,7 +498,7 @@ module.exports = {
             const coins = win ? 40 : -10;
             const xp = win ? 20 : 6;
 
-            const player = reward(user, { coins, xp, win, loss: !win });
+            const player = await reward(user, { coins, xp, win, loss: !win });
 
             return interaction.update({
                 embeds: [
@@ -537,7 +537,7 @@ module.exports = {
             const coins = jackpot ? 180 : smallWin ? 55 : -20;
             const xp = jackpot ? 70 : smallWin ? 30 : 10;
 
-            const player = reward(user, { coins, xp, win, loss: !win });
+            const player = await reward(user, { coins, xp, win, loss: !win });
 
             return interaction.update({
                 embeds: [
@@ -576,7 +576,7 @@ module.exports = {
             const coins = win ? 90 : -20;
             const xp = win ? 40 : 10;
 
-            const player = reward(user, { coins, xp, win, loss: !win });
+            const player = await reward(user, { coins, xp, win, loss: !win });
 
             return interaction.update({
                 embeds: [
@@ -621,7 +621,7 @@ module.exports = {
             const coins = win ? 70 : -15;
             const xp = win ? 35 : 10;
 
-            const player = reward(user, { coins, xp, win, loss: !win });
+            const player = await reward(user, { coins, xp, win, loss: !win });
 
             return interaction.update({
                 embeds: [
@@ -657,7 +657,7 @@ module.exports = {
             const coins = 15;
             const xp = 12;
 
-            const player = reward(user, { coins, xp, win: true, loss: false });
+            const player = await reward(user, { coins, xp, win: true, loss: false });
 
             return interaction.update({
                 embeds: [
@@ -695,7 +695,7 @@ module.exports = {
             const coins = 10;
             const xp = 5;
 
-            const player = reward(user, { coins, xp, win: true, loss: false });
+            const player = await reward(user, { coins, xp, win: true, loss: false });
 
             return interaction.update({
                 embeds: [
@@ -741,7 +741,7 @@ module.exports = {
             const coins = win ? 65 : -30;
             const xp = win ? 30 : 10;
 
-            const player = reward(user, { coins, xp, win, loss: !win });
+            const player = await reward(user, { coins, xp, win, loss: !win });
 
             return interaction.update({
                 embeds: [
@@ -798,7 +798,7 @@ module.exports = {
                 const coins = -40;
                 const xp = 12;
 
-                const player = reward(user, {
+                const player = await reward(user, {
                     coins,
                     xp,
                     win: false,
@@ -831,7 +831,7 @@ module.exports = {
                 const coins = currentReward + 150;
                 const xp = 80;
 
-                const player = reward(user, {
+                const player = await reward(user, {
                     coins,
                     xp,
                     win: true,
@@ -891,7 +891,7 @@ module.exports = {
             const coins = minesMultiplier(opened.length);
             const xp = 15 + opened.length * 8;
 
-            const player = reward(user, {
+            const player = await reward(user, {
                 coins,
                 xp,
                 win: true,
@@ -1007,7 +1007,7 @@ module.exports = {
                 const coins = correct ? 75 : -15;
                 const xp = correct ? 35 : 8;
 
-                const player = reward(user, {
+                const player = await reward(user, {
                     coins,
                     xp,
                     win: correct,
