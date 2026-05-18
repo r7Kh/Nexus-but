@@ -60,7 +60,7 @@ function lobbyEmbed(lobby, client) {
             `👑 الهوست: <@${lobby.hostId}>\n` +
             `👥 اللاعبين: \`${lobby.players.length}\`\n` +
             `📌 الحد الأدنى: \`${MIN_PLAYERS}\`\n\n` +
-            `**اللاعبين:**\n${playersText}`
+            `**اللاعبين:**\n${playersText || 'لا يوجد'}`
         )
         .setThumbnail(client.user.displayAvatarURL())
         .setFooter({ text: 'NEXUS COMMUNITY • Mafia Lobby' })
@@ -83,7 +83,7 @@ function targetSelect(customId, placeholder, players) {
             .setPlaceholder(placeholder)
             .addOptions(
                 players.slice(0, 25).map(p => ({
-                    label: p.displayName?.slice(0, 90) || p.tag.slice(0, 90),
+                    label: (p.displayName || p.tag || p.id).slice(0, 90),
                     value: p.id,
                     description: 'اختر هذا اللاعب'
                 }))
@@ -135,7 +135,7 @@ function roleEmbed(player) {
             '🔪 دورك: Mafia',
             `أنت **المافيا**.\n\n` +
             `مهمتك في الليل اختيار لاعب وقتله.\n` +
-            `حاول تخفي نفسك، تكذب بذكاء، وتخلي الشك يروح على غيرك.\n\n` +
+            `حاول تخفي نفسك وتخلي الشك يروح على غيرك.\n\n` +
             `⚠️ لا تكشف دورك لأحد.`,
             '#FF3333'
         );
@@ -145,8 +145,7 @@ function roleEmbed(player) {
         return gameEmbed(
             '💉 دورك: Doctor',
             `أنت **الدكتور**.\n\n` +
-            `مهمتك في الليل اختيار لاعب لحمايته من القتل.\n` +
-            `اختيارك ممكن يقلب الجولة بالكامل.\n\n` +
+            `مهمتك في الليل اختيار لاعب لحمايته من القتل.\n\n` +
             `⚠️ لا تكشف دورك لأحد.`,
             '#00FF88'
         );
@@ -156,12 +155,11 @@ function roleEmbed(player) {
         return gameEmbed(
             '🕵️ دورك: Detective',
             `أنت **المحقق**.\n\n` +
-            `مهمتك في الليل اختيار لاعب تشك فيه.\n` +
-            `بعد اختيار اللاعب، أنت تختار تقييمك له:\n` +
+            `اختر لاعبًا، ثم قيّمه حسب رأيك:\n` +
             `🟢 موثوق\n` +
             `🟡 عليه شك\n` +
             `🔴 مشبوه جدًا\n\n` +
-            `⚠️ البوت لن يكشف لك الحقيقة. تقييمك هو رأيك أنت.`,
+            `⚠️ البوت لن يكشف لك الحقيقة.`,
             '#3498DB'
         );
     }
@@ -169,25 +167,24 @@ function roleEmbed(player) {
     return gameEmbed(
         '👤 دورك: Citizen',
         `أنت **مواطن**.\n\n` +
-        `ما عندك قدرة خاصة في الليل.\n` +
-        `مهمتك تراقب كلام اللاعبين، تحلل، وتصوّت بذكاء.\n\n` +
+        `راقب كلام اللاعبين وصوّت بذكاء.\n\n` +
         `⚠️ لا تثق بأحد بسهولة.`,
         '#D4AF37'
     );
 }
 
 async function startNight(client, channel, gameId) {
-    const game = mafiaSessions.getGame(gameId);
+    const game = await mafiaSessions.getGame(gameId);
     if (!game) return;
 
-    if (game.timer) clearTimeout(game.timer);
+    await mafiaSessions.clearTimer(gameId);
 
     game.phase = 'NIGHT';
     game.actions = { kill: null, protect: null, investigate: null };
     game.responded = new Set();
     game.resolved = false;
 
-    mafiaSessions.setGame(gameId, game);
+    await mafiaSessions.setGame(gameId, game);
 
     await channel.send({
         embeds: [
@@ -204,19 +201,19 @@ async function startNight(client, channel, gameId) {
         components: gameControlButtons(gameId)
     });
 
-    game.timer = setTimeout(() => {
+    const timer = setTimeout(() => {
         resolveNight(client, channel, gameId).catch(() => {});
     }, PHASE_TIME);
 
-    mafiaSessions.setGame(gameId, game);
+    mafiaSessions.setTimer(gameId, timer);
 }
 
 async function resolveNight(client, channel, gameId) {
-    const game = mafiaSessions.getGame(gameId);
+    const game = await mafiaSessions.getGame(gameId);
     if (!game || game.resolved || game.phase !== 'NIGHT') return;
 
     game.resolved = true;
-    if (game.timer) clearTimeout(game.timer);
+    await mafiaSessions.clearTimer(gameId);
 
     const afkEliminated = [];
 
@@ -255,7 +252,7 @@ async function resolveNight(client, channel, gameId) {
         text += afkEliminated.map(p => `• <@${p.id}>`).join('\n');
     }
 
-    mafiaSessions.setGame(gameId, game);
+    await mafiaSessions.setGame(gameId, game);
 
     await channel.send({
         embeds: [
@@ -272,10 +269,10 @@ async function resolveNight(client, channel, gameId) {
 }
 
 async function startVoting(client, channel, gameId) {
-    const game = mafiaSessions.getGame(gameId);
+    const game = await mafiaSessions.getGame(gameId);
     if (!game) return;
 
-    if (game.timer) clearTimeout(game.timer);
+    await mafiaSessions.clearTimer(gameId);
 
     game.phase = 'VOTING';
     game.votes = {};
@@ -284,7 +281,12 @@ async function startVoting(client, channel, gameId) {
 
     const alive = alivePlayers(game);
 
-    mafiaSessions.setGame(gameId, game);
+    if (alive.length < 2) {
+        await checkWin(channel, gameId);
+        return;
+    }
+
+    await mafiaSessions.setGame(gameId, game);
 
     await channel.send({
         embeds: [
@@ -300,19 +302,19 @@ async function startVoting(client, channel, gameId) {
         ]
     });
 
-    game.timer = setTimeout(() => {
+    const timer = setTimeout(() => {
         resolveVote(client, channel, gameId).catch(() => {});
     }, PHASE_TIME);
 
-    mafiaSessions.setGame(gameId, game);
+    mafiaSessions.setTimer(gameId, timer);
 }
 
 async function resolveVote(client, channel, gameId) {
-    const game = mafiaSessions.getGame(gameId);
+    const game = await mafiaSessions.getGame(gameId);
     if (!game || game.resolved || game.phase !== 'VOTING') return;
 
     game.resolved = true;
-    if (game.timer) clearTimeout(game.timer);
+    await mafiaSessions.clearTimer(gameId);
 
     const alive = alivePlayers(game);
     const afk = alive.filter(p => !game.responded.has(p.id));
@@ -323,7 +325,7 @@ async function resolveVote(client, channel, gameId) {
 
     const voteCounts = {};
 
-    for (const targetId of Object.values(game.votes)) {
+    for (const targetId of Object.values(game.votes || {})) {
         voteCounts[targetId] = (voteCounts[targetId] || 0) + 1;
     }
 
@@ -338,7 +340,7 @@ async function resolveVote(client, channel, gameId) {
         }
     }
 
-    mafiaSessions.setGame(gameId, game);
+    await mafiaSessions.setGame(gameId, game);
 
     let text = '';
 
@@ -369,7 +371,7 @@ async function resolveVote(client, channel, gameId) {
 }
 
 async function checkWin(channel, gameId) {
-    const game = mafiaSessions.getGame(gameId);
+    const game = await mafiaSessions.getGame(gameId);
     if (!game) return true;
 
     const alive = alivePlayers(game);
@@ -390,7 +392,7 @@ async function checkWin(channel, gameId) {
 }
 
 async function endGame(channel, gameId, title, description) {
-    const game = mafiaSessions.getGame(gameId);
+    const game = await mafiaSessions.getGame(gameId);
     if (!game) return;
 
     for (const player of game.players) {
@@ -398,7 +400,7 @@ async function endGame(channel, gameId, title, description) {
             (title.includes('المواطنون') && player.role !== 'Mafia') ||
             (title.includes('المافيا') && player.role === 'Mafia');
 
-        gameDB.addReward(
+        await gameDB.addReward(
             { id: player.id, tag: player.tag },
             {
                 coins: isWinner ? 120 : 25,
@@ -409,7 +411,7 @@ async function endGame(channel, gameId, title, description) {
         );
     }
 
-    mafiaSessions.deleteGame(gameId);
+    await mafiaSessions.deleteGame(gameId);
 
     await channel.send({
         embeds: [
@@ -443,12 +445,12 @@ module.exports = {
                 });
             }
 
-            const activeSession = gameSessions.getUserSession(interaction.user.id);
-            const activeLobby = mafiaSessions.getLobby(interaction.channel.id);
-            const activeGame = mafiaSessions.getGameByChannel(interaction.channel.id);
+            const activeSession = await gameSessions.getUserSession(interaction.user.id);
+            const activeLobby = await mafiaSessions.getLobby(interaction.channel.id);
+            const activeGame = await mafiaSessions.getGameByChannel(interaction.channel.id);
 
             if (activeSession && activeSession.type === 'hub') {
-                gameSessions.clearUserSession(interaction.user.id);
+                await gameSessions.clearUserSession(interaction.user.id);
             }
 
             if (activeGame) {
@@ -465,7 +467,7 @@ module.exports = {
                 });
             }
 
-            const lobby = mafiaSessions.createLobby(interaction.channel.id, interaction.user);
+            const lobby = await mafiaSessions.createLobby(interaction.channel.id, interaction.user);
 
             const reply = await interaction.reply({
                 content: '@here 🕵️ تم فتح لوبي Mafia جديد!',
@@ -474,7 +476,7 @@ module.exports = {
                 fetchReply: true
             });
 
-            gameSessions.createSession({
+            await gameSessions.createSession({
                 userId: interaction.user.id,
                 channelId: interaction.channel.id,
                 messageId: reply.id,
@@ -485,7 +487,8 @@ module.exports = {
         }
 
         if (customId === 'mafia_join') {
-            const lobby = mafiaSessions.getLobby(interaction.channel.id);
+            const lobby = await mafiaSessions.getLobby(interaction.channel.id);
+
             if (!lobby) {
                 return interaction.reply({
                     content: '❌ لا يوجد لوبي Mafia مفتوح.',
@@ -493,7 +496,7 @@ module.exports = {
                 });
             }
 
-            const updatedLobby = mafiaSessions.addPlayer(interaction.channel.id, interaction.user);
+            const updatedLobby = await mafiaSessions.addPlayer(interaction.channel.id, interaction.user);
 
             return interaction.update({
                 embeds: [lobbyEmbed(updatedLobby, client)],
@@ -502,7 +505,8 @@ module.exports = {
         }
 
         if (customId === 'mafia_leave') {
-            const lobby = mafiaSessions.getLobby(interaction.channel.id);
+            const lobby = await mafiaSessions.getLobby(interaction.channel.id);
+
             if (!lobby) {
                 return interaction.reply({
                     content: '❌ لا يوجد لوبي Mafia مفتوح.',
@@ -517,7 +521,10 @@ module.exports = {
                 });
             }
 
-            const updatedLobby = mafiaSessions.removePlayer(interaction.channel.id, interaction.user.id);
+            const updatedLobby = await mafiaSessions.removePlayer(
+                interaction.channel.id,
+                interaction.user.id
+            );
 
             return interaction.update({
                 embeds: [lobbyEmbed(updatedLobby, client)],
@@ -526,7 +533,8 @@ module.exports = {
         }
 
         if (customId === 'mafia_cancel') {
-            const lobby = mafiaSessions.getLobby(interaction.channel.id);
+            const lobby = await mafiaSessions.getLobby(interaction.channel.id);
+
             if (!lobby) {
                 return interaction.reply({
                     content: '❌ لا يوجد لوبي Mafia مفتوح.',
@@ -541,8 +549,8 @@ module.exports = {
                 });
             }
 
-            mafiaSessions.deleteLobby(interaction.channel.id);
-            gameSessions.clearUserSession(interaction.user.id);
+            await mafiaSessions.deleteLobby(interaction.channel.id);
+            await gameSessions.clearUserSession(interaction.user.id);
 
             return interaction.update({
                 embeds: [
@@ -559,7 +567,7 @@ module.exports = {
         if (customId === 'mafia_start') {
             await interaction.deferUpdate();
 
-            const lobby = mafiaSessions.getLobby(interaction.channel.id);
+            const lobby = await mafiaSessions.getLobby(interaction.channel.id);
 
             if (!lobby) {
                 return interaction.followUp({
@@ -595,13 +603,12 @@ module.exports = {
                 actions: {},
                 votes: {},
                 responded: new Set(),
-                resolved: false,
-                timer: null
+                resolved: false
             };
 
-            mafiaSessions.createGame(game);
-            mafiaSessions.deleteLobby(interaction.channel.id);
-            gameSessions.clearUserSession(interaction.user.id);
+            await mafiaSessions.createGame(game);
+            await mafiaSessions.deleteLobby(interaction.channel.id);
+            await gameSessions.clearUserSession(interaction.user.id);
 
             await interaction.message.edit({
                 content: players.map(p => `<@${p.id}>`).join(' '),
@@ -623,7 +630,7 @@ module.exports = {
 
         if (customId.startsWith('mafia_reveal_')) {
             const gameId = customId.replace('mafia_reveal_', '');
-            const game = mafiaSessions.getGame(gameId);
+            const game = await mafiaSessions.getGame(gameId);
 
             if (!game) {
                 return interaction.reply({
@@ -649,7 +656,7 @@ module.exports = {
 
         if (customId.startsWith('mafia_night_panel_')) {
             const gameId = customId.replace('mafia_night_panel_', '');
-            const game = mafiaSessions.getGame(gameId);
+            const game = await mafiaSessions.getGame(gameId);
 
             if (!game || game.phase !== 'NIGHT') {
                 return interaction.reply({
@@ -732,7 +739,7 @@ module.exports = {
             const action = parts[2];
             const gameId = parts.slice(3).join('_');
 
-            const game = mafiaSessions.getGame(gameId);
+            const game = await mafiaSessions.getGame(gameId);
 
             if (!game || game.phase !== 'NIGHT') {
                 return interaction.reply({
@@ -813,7 +820,7 @@ module.exports = {
             }
 
             game.responded.add(player.id);
-            mafiaSessions.setGame(gameId, game);
+            await mafiaSessions.setGame(gameId, game);
 
             const required = ['Mafia', 'Doctor', 'Detective']
                 .map(role => aliveRole(game, role))
@@ -843,7 +850,7 @@ module.exports = {
             const gameId = `${parts[3]}_${parts[4]}`;
             const targetId = parts.slice(5).join('_');
 
-            const game = mafiaSessions.getGame(gameId);
+            const game = await mafiaSessions.getGame(gameId);
 
             if (!game || game.phase !== 'NIGHT') {
                 return interaction.reply({
@@ -906,7 +913,7 @@ module.exports = {
 
         if (customId.startsWith('mafia_vote_')) {
             const gameId = customId.replace('mafia_vote_', '');
-            const game = mafiaSessions.getGame(gameId);
+            const game = await mafiaSessions.getGame(gameId);
 
             if (!game || game.phase !== 'VOTING') {
                 return interaction.reply({
@@ -929,7 +936,7 @@ module.exports = {
             game.votes[interaction.user.id] = targetId;
             game.responded.add(interaction.user.id);
 
-            mafiaSessions.setGame(gameId, game);
+            await mafiaSessions.setGame(gameId, game);
 
             await interaction.reply({
                 content: `✅ تم تسجيل تصويتك ضد <@${targetId}>.`,

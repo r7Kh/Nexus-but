@@ -1,68 +1,142 @@
-const mafiaLobbies = new Map();
-const mafiaGames = new Map();
+const MafiaLobby = require('../models/MafiaLobby');
+const MafiaGame = require('../models/MafiaGame');
 
-function createLobby(channelId, host) {
-    const lobby = {
+const timers = new Map();
+
+async function createLobby(channelId, host) {
+    await MafiaLobby.deleteOne({ channelId });
+
+    return await MafiaLobby.create({
         channelId,
         hostId: host.id,
         hostTag: host.tag,
-        players: [{ id: host.id, tag: host.tag }],
-        status: 'WAITING',
-        createdAt: Date.now()
-    };
-
-    mafiaLobbies.set(channelId, lobby);
-    return lobby;
+        players: [
+            {
+                id: host.id,
+                tag: host.tag
+            }
+        ],
+        status: 'WAITING'
+    });
 }
 
-function getLobby(channelId) {
-    return mafiaLobbies.get(channelId) || null;
+async function getLobby(channelId) {
+    return await MafiaLobby.findOne({ channelId });
 }
 
-function deleteLobby(channelId) {
-    mafiaLobbies.delete(channelId);
+async function deleteLobby(channelId) {
+    await MafiaLobby.deleteOne({ channelId });
 }
 
-function addPlayer(channelId, user) {
-    const lobby = getLobby(channelId);
+async function addPlayer(channelId, user) {
+    const lobby = await getLobby(channelId);
     if (!lobby) return null;
 
-    if (!lobby.players.some(p => p.id === user.id)) {
-        lobby.players.push({ id: user.id, tag: user.tag });
+    const exists = lobby.players.some(p => p.id === user.id);
+
+    if (!exists) {
+        lobby.players.push({
+            id: user.id,
+            tag: user.tag
+        });
+
+        await lobby.save();
     }
 
     return lobby;
 }
 
-function removePlayer(channelId, userId) {
-    const lobby = getLobby(channelId);
+async function removePlayer(channelId, userId) {
+    const lobby = await getLobby(channelId);
     if (!lobby) return null;
 
     lobby.players = lobby.players.filter(p => p.id !== userId);
+
+    await lobby.save();
+
     return lobby;
 }
 
-function createGame(game) {
-    mafiaGames.set(game.id, game);
-    return game;
+async function createGame(game) {
+    await MafiaGame.deleteOne({ id: game.id });
+
+    const safeGame = {
+        ...game,
+        responded: Array.from(game.responded || [])
+    };
+
+    delete safeGame.timer;
+
+    return await MafiaGame.create(safeGame);
 }
 
-function getGame(gameId) {
-    return mafiaGames.get(gameId) || null;
+async function getGame(gameId) {
+    const game = await MafiaGame.findOne({ id: gameId });
+    if (!game) return null;
+
+    return {
+        ...game.toObject(),
+        responded: new Set(game.responded || [])
+    };
 }
 
-function setGame(gameId, game) {
-    mafiaGames.set(gameId, game);
+async function setGame(gameId, game) {
+    const safeGame = {
+        ...game,
+        responded: Array.from(game.responded || [])
+    };
+
+    delete safeGame._id;
+    delete safeGame.__v;
+    delete safeGame.createdAt;
+    delete safeGame.updatedAt;
+    delete safeGame.timer;
+
+    await MafiaGame.updateOne(
+        { id: gameId },
+        { $set: safeGame },
+        { upsert: true }
+    );
 }
 
-function deleteGame(gameId) {
-    const game = mafiaGames.get(gameId);
-    if (game?.timer) clearTimeout(game.timer);
-    mafiaGames.delete(gameId);
+async function deleteGame(gameId) {
+    const timer = timers.get(gameId);
+
+    if (timer) {
+        clearTimeout(timer);
+        timers.delete(gameId);
+    }
+
+    await MafiaGame.deleteOne({ id: gameId });
 }
 
-function getGameByChannel(channelId) {
-    return [...mafiaGames.values()].find(g => g.channelId === channelId) || null;
+async function getGameByChannel(channelId) {
+    const game = await MafiaGame.findOne({ channelId });
+    if (!game) return null;
+
+    return {
+        ...game.toObject(),
+        responded: new Set(game.responded || [])
+    };
+}
+
+function setTimer(gameId, timer) {
+    const oldTimer = timers.get(gameId);
+
+    if (oldTimer) {
+        clearTimeout(oldTimer);
+    }
+
+    timers.set(gameId, timer);
+}
+
+function clearTimer(gameId) {
+    const timer = timers.get(gameId);
+
+    if (timer) {
+        clearTimeout(timer);
+        timers.delete(gameId);
+    }
 }
 
 module.exports = {
@@ -75,5 +149,7 @@ module.exports = {
     getGame,
     setGame,
     deleteGame,
-    getGameByChannel
+    getGameByChannel,
+    setTimer,
+    clearTimer
 };
