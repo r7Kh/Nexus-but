@@ -298,21 +298,14 @@ module.exports = {
 
         const ticketId = ticket?.id || channel.name.split('-').pop() || 'unknown';
 
-        if (!isStaff(interaction.member) && customId !== 'ticket_close') {
+        if (!isStaff(interaction.member)) {
             return interaction.reply({
                 content: '❌ هذا الزر مخصص لفريق التذاكر فقط.',
                 flags: 64
-            });
+            }).catch(() => {});
         }
 
         if (customId === 'ticket_claim') {
-            if (!isStaff(interaction.member)) {
-                return interaction.reply({
-                    content: '❌ فقط فريق التذاكر يستطيع استلام التذكرة.',
-                    flags: 64
-                });
-            }
-
             if (ticketDB.updateTicket && ticket?.id) {
                 ticketDB.updateTicket(ticket.id, {
                     claimedBy: interaction.user.tag,
@@ -338,13 +331,6 @@ module.exports = {
         }
 
         if (customId === 'ticket_options') {
-            if (!isStaff(interaction.member)) {
-                return interaction.reply({
-                    content: '❌ فقط فريق التذاكر يستطيع استخدام خيارات التذكرة.',
-                    flags: 64
-                });
-            }
-
             return interaction.reply({
                 embeds: [
                     createEmbed({
@@ -360,33 +346,19 @@ module.exports = {
                 ],
                 components: optionsRows(),
                 flags: 64
-            });
+            }).catch(() => {});
         }
 
         if (customId === 'ticket_add_member') {
-            if (!isStaff(interaction.member)) {
-                return interaction.reply({
-                    content: '❌ فقط فريق التذاكر يستطيع إضافة عضو.',
-                    flags: 64
-                });
-            }
-
             return interaction.showModal(
                 memberModal('ticket_add_member_modal', 'إضافة عضو للتذكرة')
-            );
+            ).catch(() => {});
         }
 
         if (customId === 'ticket_remove_member') {
-            if (!isStaff(interaction.member)) {
-                return interaction.reply({
-                    content: '❌ فقط فريق التذاكر يستطيع إزالة عضو.',
-                    flags: 64
-                });
-            }
-
             return interaction.showModal(
                 memberModal('ticket_remove_member_modal', 'إزالة عضو من التذكرة')
-            );
+            ).catch(() => {});
         }
 
         if (customId === 'ticket_add_member_modal') {
@@ -397,7 +369,7 @@ module.exports = {
                 return interaction.reply({
                     content: '❌ لم أستطع قراءة ID العضو.',
                     flags: 64
-                });
+                }).catch(() => {});
             }
 
             const member = await interaction.guild.members.fetch(userId).catch(() => null);
@@ -406,7 +378,7 @@ module.exports = {
                 return interaction.reply({
                     content: '❌ العضو غير موجود داخل السيرفر.',
                     flags: 64
-                });
+                }).catch(() => {});
             }
 
             await channel.permissionOverwrites.edit(userId, {
@@ -425,7 +397,7 @@ module.exports = {
                         thumbnail: member.user.displayAvatarURL()
                     })
                 ]
-            });
+            }).catch(() => {});
         }
 
         if (customId === 'ticket_remove_member_modal') {
@@ -436,7 +408,7 @@ module.exports = {
                 return interaction.reply({
                     content: '❌ لم أستطع قراءة ID العضو.',
                     flags: 64
-                });
+                }).catch(() => {});
             }
 
             const member = await interaction.guild.members.fetch(userId).catch(() => null);
@@ -451,21 +423,13 @@ module.exports = {
                         thumbnail: member?.user?.displayAvatarURL?.() || client.user.displayAvatarURL()
                     })
                 ]
-            });
+            }).catch(() => {});
         }
 
         if (customId === 'ticket_save_html') {
-            if (!isStaff(interaction.member)) {
-                return interaction.reply({
-                    content: '❌ فقط فريق التذاكر يستطيع حفظ HTML.',
-                    flags: 64
-                });
-            }
-
-            await interaction.reply({
-                content: '⏳ يتم إنشاء ملف HTML...',
+            await interaction.deferReply({
                 flags: 64
-            });
+            }).catch(() => {});
 
             const saved = await saveTranscriptToLogs(interaction, channel, ticketId, 'manual');
 
@@ -477,24 +441,15 @@ module.exports = {
                 });
             }
 
-            return interaction.followUp({
-                content: '✅ تم حفظ ملف HTML داخل روم السجلات.',
-                flags: 64
-            });
+            return interaction.editReply({
+                content: '✅ تم حفظ ملف HTML داخل روم السجلات.'
+            }).catch(() => {});
         }
 
         if (customId === 'ticket_close') {
-            if (!isStaff(interaction.member)) {
-                return interaction.reply({
-                    content: '❌ فقط فريق التذاكر يستطيع إغلاق التذكرة.',
-                    flags: 64
-                });
-            }
-
-            await interaction.reply({
-                content: '⏳ يتم إنشاء ملف HTML للتذكرة...',
+            await interaction.deferReply({
                 flags: 64
-            });
+            }).catch(() => {});
 
             const saved = await saveTranscriptToLogs(interaction, channel, ticketId, 'close');
 
@@ -509,6 +464,10 @@ module.exports = {
                 });
             }
 
+            await interaction.editReply({
+                content: '✅ تم حفظ HTML. سيتم إغلاق التذكرة خلال 5 ثواني.'
+            }).catch(() => {});
+
             await channel.send({
                 embeds: [
                     createEmbed({
@@ -517,7 +476,7 @@ module.exports = {
                         thumbnail: client.user.displayAvatarURL()
                     })
                 ]
-            });
+            }).catch(() => {});
 
             return setTimeout(() => {
                 channel.delete().catch(() => {});
