@@ -88,6 +88,53 @@ function optionsRows() {
     ];
 }
 
+function ratingRow(ticketId) {
+    return new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId(`ticket_rate_1_${ticketId}`)
+            .setLabel('1')
+            .setEmoji('⭐')
+            .setStyle(ButtonStyle.Secondary),
+
+        new ButtonBuilder()
+            .setCustomId(`ticket_rate_2_${ticketId}`)
+            .setLabel('2')
+            .setEmoji('⭐')
+            .setStyle(ButtonStyle.Secondary),
+
+        new ButtonBuilder()
+            .setCustomId(`ticket_rate_3_${ticketId}`)
+            .setLabel('3')
+            .setEmoji('⭐')
+            .setStyle(ButtonStyle.Primary),
+
+        new ButtonBuilder()
+            .setCustomId(`ticket_rate_4_${ticketId}`)
+            .setLabel('4')
+            .setEmoji('⭐')
+            .setStyle(ButtonStyle.Success),
+
+        new ButtonBuilder()
+            .setCustomId(`ticket_rate_5_${ticketId}`)
+            .setLabel('5')
+            .setEmoji('⭐')
+            .setStyle(ButtonStyle.Success)
+    );
+}
+
+function disabledRatingRow(ticketId, selectedRating) {
+    return new ActionRowBuilder().addComponents(
+        [1, 2, 3, 4, 5].map(rate =>
+            new ButtonBuilder()
+                .setCustomId(`ticket_rate_disabled_${rate}_${ticketId}`)
+                .setLabel(String(rate))
+                .setEmoji(rate === selectedRating ? '✅' : '⭐')
+                .setStyle(rate === selectedRating ? ButtonStyle.Success : ButtonStyle.Secondary)
+                .setDisabled(true)
+        )
+    );
+}
+
 function escapeHtml(text = '') {
     return String(text)
         .replaceAll('&', '&amp;')
@@ -280,6 +327,26 @@ async function saveTranscriptToLogs(interaction, channel, ticketId, mode = 'manu
     };
 }
 
+async function sendRatingLog(interaction, ticketId, rating) {
+    const logChannel = interaction.guild.channels.cache.get(TICKET_LOG_CHANNEL_ID);
+
+    if (!logChannel) return;
+
+    await logChannel.send({
+        embeds: [
+            new EmbedBuilder()
+                .setColor('#D4AF37')
+                .setTitle(`⭐ Ticket Rating #${ticketId}`)
+                .setDescription(
+                    `تم تقييم التذكرة.\n\n` +
+                    `👤 المقيم: ${interaction.user}\n` +
+                    `⭐ التقييم: **${rating}/5**`
+                )
+                .setTimestamp()
+        ]
+    }).catch(() => {});
+}
+
 module.exports = {
     name: 'interactionCreate',
     once: false,
@@ -297,6 +364,54 @@ module.exports = {
             : null;
 
         const ticketId = ticket?.id || channel.name.split('-').pop() || 'unknown';
+
+        if (customId.startsWith('ticket_rate_')) {
+            const parts = customId.split('_');
+
+            if (parts[2] === 'disabled') {
+                return interaction.reply({
+                    content: '✅ تم تسجيل التقييم مسبقًا.',
+                    flags: 64
+                }).catch(() => {});
+            }
+
+            const rating = Number(parts[2]);
+            const ratedTicketId = parts.slice(3).join('_') || ticketId;
+
+            if (!rating || rating < 1 || rating > 5) {
+                return interaction.reply({
+                    content: '❌ تقييم غير صحيح.',
+                    flags: 64
+                }).catch(() => {});
+            }
+
+            const targetTicket = ticketDB.updateTicket
+                ? ticketDB.updateTicket(ratedTicketId, {
+                    rating,
+                    ratingBy: interaction.user.tag,
+                    ratingById: interaction.user.id,
+                    ratingAt: new Date().toISOString()
+                })
+                : null;
+
+            await sendRatingLog(interaction, ratedTicketId, rating);
+
+            return interaction.update({
+                embeds: [
+                    createEmbed({
+                        title: '⭐ شكرًا على تقييمك',
+                        description:
+                            `تم تسجيل تقييمك بنجاح.\n\n` +
+                            `⭐ التقييم: **${rating}/5**\n\n` +
+                            `سيتم حذف الروم قريبًا.`,
+                        thumbnail: interaction.user.displayAvatarURL()
+                    })
+                ],
+                components: [
+                    disabledRatingRow(ratedTicketId, rating)
+                ]
+            }).catch(() => {});
+        }
 
         if (!isStaff(interaction.member)) {
             return interaction.reply({
@@ -455,7 +570,7 @@ module.exports = {
 
             if (ticketDB.updateTicket && ticket?.id) {
                 ticketDB.updateTicket(ticket.id, {
-                    status: 'CLOSED',
+                    status: 'CLOSING',
                     closedBy: interaction.user.tag,
                     closedById: interaction.user.id,
                     closedAt: new Date().toISOString(),
@@ -465,22 +580,33 @@ module.exports = {
             }
 
             await interaction.editReply({
-                content: '✅ تم حفظ HTML. سيتم إغلاق التذكرة خلال 5 ثواني.'
+                content: '✅ تم حفظ HTML. سيتم إغلاق التذكرة خلال 30 ثانية.'
             }).catch(() => {});
 
             await channel.send({
                 embeds: [
                     createEmbed({
-                        title: '🔒 سيتم إغلاق التذكرة',
-                        description: 'تم حفظ سجل التذكرة كملف HTML. سيتم حذف الروم خلال 5 ثواني.',
+                        title: '⭐ تقييم التذكرة',
+                        description:
+                            `قبل إغلاق التذكرة، يرجى تقييم الخدمة من 1 إلى 5.\n\n` +
+                            `سيتم حذف الروم خلال **30 ثانية**.`,
                         thumbnail: client.user.displayAvatarURL()
                     })
+                ],
+                components: [
+                    ratingRow(ticketId)
                 ]
             }).catch(() => {});
 
             return setTimeout(() => {
+                if (ticketDB.updateTicket && ticket?.id) {
+                    ticketDB.updateTicket(ticket.id, {
+                        status: 'CLOSED'
+                    });
+                }
+
                 channel.delete().catch(() => {});
-            }, 5000);
+            }, 30000);
         }
     }
 };
