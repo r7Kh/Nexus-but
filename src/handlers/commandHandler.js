@@ -12,17 +12,17 @@ function loadCommandsFromFolder(client, folderPath) {
         const commandName = command.name || command.data?.name;
 
         if (commandName) {
-            client.commands.set(commandName, command);
+            client.slashCommands.set(commandName, command);
             console.log(`📂 Loaded command: ${commandName}`);
         }
     }
 }
 
 module.exports = (client) => {
-    client.commands = new Map();
+    client.slashCommands = new Map();
 
     loadCommandsFromFolder(client, path.join(__dirname, '../commands'));
     loadCommandsFromFolder(client, path.join(__dirname, '../systems/nexusCity/commands'));
 
-    console.log(`📦 Loaded ${client.commands.size} commands`);
+    console.log(`📦 Loaded ${client.slashCommands.size} commands`);
 };
