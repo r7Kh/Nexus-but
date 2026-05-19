@@ -1,15 +1,18 @@
 const fs = require('fs');
 const path = require('path');
 
-module.exports = (client) => {
-    client.slashCommands = new Map();
+function loadSlashCommands(client, folderPath) {
+    if (!fs.existsSync(folderPath)) {
+        console.log(`⚠️ Slash commands folder not found: ${folderPath}`);
+        return;
+    }
 
-    const commandsPath = path.join(__dirname, '../slashCommands');
-
-    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+    const commandFiles = fs
+        .readdirSync(folderPath)
+        .filter(file => file.endsWith('.js'));
 
     for (const file of commandFiles) {
-        const command = require(path.join(commandsPath, file));
+        const command = require(path.join(folderPath, file));
 
         console.log(`📂 Loading slash command: ${file}`);
 
@@ -20,6 +23,13 @@ module.exports = (client) => {
 
         client.slashCommands.set(command.data.name, command);
     }
+}
+
+module.exports = (client) => {
+    client.slashCommands = new Map();
+
+    loadSlashCommands(client, path.join(__dirname, '../slashCommands'));
+    loadSlashCommands(client, path.join(__dirname, '../systems/nexusCity/commands'));
 
     console.log(`⚡ Loaded ${client.slashCommands.size} slash commands`);
 };
