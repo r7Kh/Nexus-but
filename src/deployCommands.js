@@ -7,28 +7,32 @@ const { REST, Routes } = require('discord.js');
 
 const commands = [];
 
-const commandsPath = path.join(__dirname, 'slashCommands');
+function loadSlashCommands(folderPath) {
+    if (!fs.existsSync(folderPath)) return;
 
-const commandFiles = fs
-    .readdirSync(commandsPath)
-    .filter(file => file.endsWith('.js'));
+    const commandFiles = fs
+        .readdirSync(folderPath)
+        .filter(file => file.endsWith('.js'));
 
-for (const file of commandFiles) {
-    const filePath = path.join(commandsPath, file);
+    for (const file of commandFiles) {
+        const filePath = path.join(folderPath, file);
+        const command = require(filePath);
 
-    const command = require(filePath);
+        console.log(`📂 Loading: ${filePath}`);
 
-    console.log(`📂 Loading: ${file}`);
+        if (!command.data) {
+            console.log(`❌ Missing "data" in ${file}`);
+            continue;
+        }
 
-    if (!command.data) {
-        console.log(`❌ Missing "data" in ${file}`);
-        continue;
+        commands.push(command.data.toJSON());
+
+        console.log(`✅ Loaded Slash Command: ${command.data.name}`);
     }
-
-    commands.push(command.data.toJSON());
-
-    console.log(`✅ Loaded Slash Command: ${command.data.name}`);
 }
+
+loadSlashCommands(path.join(__dirname, 'slashCommands'));
+loadSlashCommands(path.join(__dirname, 'systems/nexusCity/commands'));
 
 const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 
@@ -41,7 +45,7 @@ const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
             { body: commands }
         );
 
-        console.log('✅ Slash commands deployed successfully');
+        console.log(`✅ Slash commands deployed successfully: ${commands.length}`);
     } catch (error) {
         console.error(error);
     }
